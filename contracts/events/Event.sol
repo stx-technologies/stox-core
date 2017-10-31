@@ -1,20 +1,21 @@
 pragma solidity ^0.4.0;
 import "../Ownable.sol";
 import "../oracles/Oracle.sol";
+import "../token/IERC20Token.sol";
 
 contract Event is Ownable {
 
     event onEventPublished();
-    event OnEventResolved(address indexed oracle, address indexed eventAddr, uint indexed winningOutcomeId);
-    event OnOptionBought(address indexed owner, uint indexed outcomeId, uint tokenAmount);
-    event OnEarningsWithdrawn(address indexed owner, uint tokenAmount);
+    event OnEventResolved(address indexed _oracle, address indexed _eventAddr, uint indexed _winningOutcomeId);
+    event OnOptionBought(address indexed _owner, uint indexed _outcomeId, uint indexed _optionId, uint _tokenAmount);
+    event OnEarningsWithdrawn(address indexed _owner, uint _tokenAmount);
     event OnEventCanceled();
-    event OnUserOptionsCanceled(address indexed owner);
-    event OnUserOptionCanceled(address indexed owner, uint optionId);
-    event OnOptionBuyingEndTimeChanged(uint newTime);
-    event OnEventEndTimeChanged(uint newTime);
-    event OnNameChanged(string newName);
-    event OnOutcomeAdded(uint indexed outcomeId, string name);
+    event OnUserOptionsCanceled(address indexed _owner);
+    event OnUserOptionCanceled(address indexed _owner, uint _optionId);
+    event OnOptionBuyingEndTimeChanged(uint _newTime);
+    event OnEventEndTimeChanged(uint _newTime);
+    event OnNameChanged(string _newName);
+    event OnOutcomeAdded(uint indexed _outcomeId, string _name);
 
     struct Outcome {
         uint    id;
@@ -30,6 +31,7 @@ contract Event is Ownable {
 
     string      public  version = "0.1";
     string      public  name;
+    IERC20Token public  stox;
     bool        public  isPublished;
     uint        public  optionBuyingEndTimeSeconds;
     uint        public  eventEndTimeSeconds;
@@ -42,12 +44,20 @@ contract Event is Ownable {
     mapping(address => uint[]) public ownerOptions; // Mapping to see the total options for each user (user address -> option ids)
 
     // TODO: Add market maker
-    function Event(address _owner, address _oracle, uint _eventEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public Ownable(_owner) {
+    function Event(address _owner, 
+            address _oracle, 
+            uint _eventEndTimeSeconds, 
+            uint _optionBuyingEndTimeSeconds, 
+            string _name, 
+            IERC20Token _stox) 
+            public 
+            Ownable(_owner) {
         require ((_eventEndTimeSeconds >= _optionBuyingEndTimeSeconds) && (address(_oracle) != 0x0));
         oracleAddress = _oracle;
         eventEndTimeSeconds = _eventEndTimeSeconds;
         optionBuyingEndTimeSeconds = _optionBuyingEndTimeSeconds;
         name = _name;
+        stox = _stox;
     }
 
     // Returns outcome id
@@ -100,10 +110,11 @@ contract Event is Ownable {
         uint optionId = options.push(Option(_outcomeId, _tokenAmount, false)) - 1;
         ownerOptions[_owner].push(optionId);
         outcomes[_outcomeId - 1].tokens = (outcomes[_outcomeId - 1].tokens + _tokenAmount);
+        stox.transferFrom(_owner, this, _tokenAmount);
 
         // TODO: Make deposited user STX in event
 
-        OnOptionBought(_owner, _outcomeId, _tokenAmount);
+        OnOptionBought(_owner, _outcomeId, optionId, _tokenAmount);
     }
 
     function buyOption(uint _tokenAmount, uint _outcomeId) external {
@@ -131,6 +142,8 @@ contract Event is Ownable {
                 option.isWithdrawn = true;
             }
         }
+
+        stox.transfer(msg.sender, userWinTokens);
 
         // TODO: Send userWinTokens STX to actual address
         OnEarningsWithdrawn(msg.sender, userWinTokens);
