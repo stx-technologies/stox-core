@@ -1,4 +1,4 @@
-pragma solidity ^0.4.15;
+pragma solidity ^0.4.18;
 import "./ERC20Token.sol";
 import "../Ownable.sol";
 
@@ -46,18 +46,17 @@ contract StoxTestToken is ERC20Token, Ownable {
         @param _to         account to receive the new amount
         @param _amount     amount to increase the supply by
     */
-    /*function issue(address _to, uint256 _amount)
+    function issue(address _to, uint256 _amount)
         public
         ownerOnly
         validAddress(_to)
-        notThis(_to) 
-        {
+        notThis(_to) {
         totalSupply = safeAdd(totalSupply, _amount);
         balanceOf[_to] = safeAdd(balanceOf[_to], _amount);
 
         Issuance(_amount);
         Transfer(this, _to, _amount);
-    }*/
+    }
 
     /**
         @dev removes tokens from an account and decreases the token supply

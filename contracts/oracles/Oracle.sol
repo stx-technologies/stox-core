@@ -1,11 +1,12 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.18;
 import "../Ownable.sol";
 
 contract Oracle is Ownable {
 
-    event OnOutcomeAssigned(address indexed eventAddress, uint indexed outcomeId);
-    event OnEventRegistered(address indexed eventAddress);
-    event OnEventUnregistered(address indexed eventAddress);
+    event OutcomeAssigned(address indexed _eventAddress, uint indexed _outcomeId);
+    event EventRegistered(address indexed _eventAddress);
+    event EventUnregistered(address indexed _eventAddress);
+    event OracleNameChanged(string _newName);
 
     string version = "0.1";
     string public name;
@@ -19,13 +20,13 @@ contract Oracle is Ownable {
     function registerEvent(address _eventToRegister) public ownerOnly {
         events[_eventToRegister] = _eventToRegister;
 
-        OnEventRegistered(_eventToRegister);
+        EventRegistered(_eventToRegister);
     }
 
     function unRegisterEvent(address _eventToRegister) public ownerOnly {
         delete events[_eventToRegister];
 
-        OnEventUnregistered(_eventToRegister);
+        EventUnregistered(_eventToRegister);
     }
 
     // TODO: Set outcome should not immediately call event.setWinningOutcome, as we don't want accidential results to trigger events winnings
@@ -33,12 +34,17 @@ contract Oracle is Ownable {
         require((_outcomeId != 0) && (address(events[_eventAddress]) != 0));
         eventOutcome[_eventAddress] = _outcomeId;
         
-        OnOutcomeAssigned(_eventAddress, _outcomeId);
+        OutcomeAssigned(_eventAddress, _outcomeId);
     }
 
-    function getOutcome(address _eventAddress) public returns (uint) {
+    function getOutcome(address _eventAddress) public constant returns (uint) {
         require(address(events[_eventAddress]) != 0);
 
         return eventOutcome[_eventAddress];
+    }
+
+    function setName(string _newName) external ownerOnly {
+        name = _newName;
+        OracleNameChanged(_newName);
     }
 }

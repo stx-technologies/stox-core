@@ -1,9 +1,9 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.18;
 import "../Ownable.sol";
 import "./IOracleFactoryImpl.sol";
 
 contract OracleFactory is Ownable {
-    event OnOracleCreated(address indexed creator, address oracle);
+    event OracleCreated(address indexed _creator, address _oracle);
 
     IOracleFactoryImpl public factory;
 
@@ -20,7 +20,7 @@ contract OracleFactory is Ownable {
     function createOracle(string _name) public returns(address) {
         address oracle = factory.createOracle(msg.sender, _name);
 
-        OnOracleCreated(msg.sender, oracle);
+        OracleCreated(msg.sender, oracle);
         return (oracle);
     }
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.18;
 
 
 /*
@@ -8,7 +8,7 @@ contract Ownable {
     address public owner;
     address public newOwner;
 
-    event OwnerUpdate(address prevOwner, address newOwner);
+    event OwnerUpdate(address _prevOwner, address _newOwner);
 
     /**
         @dev constructor

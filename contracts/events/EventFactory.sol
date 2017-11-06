@@ -1,10 +1,10 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.18;
 import "./IEventFactoryImpl.sol";
 import "../Ownable.sol";
 
 contract EventFactory is Ownable {
 
-    event OnEventCreated(address indexed creator, address indexed newEvent);
+    event PoolEventCreated(address indexed _creator, address indexed _newEvent);
     
     IEventFactoryImpl public factory;
 
@@ -18,10 +18,10 @@ contract EventFactory is Ownable {
         factory = _factory;
     }
 
-    function createEvent(address _oracle, uint _eventEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public returns(address) {
-        address newEvent = factory.createEvent(msg.sender, _oracle, _eventEndTimeSeconds, _optionBuyingEndTimeSeconds, _name);
+    function createPoolEvent(address _oracle, uint _eventEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public returns(address) {
+        address newEvent = factory.createPoolEvent(msg.sender, _oracle, _eventEndTimeSeconds, _optionBuyingEndTimeSeconds, _name);
 
-        OnEventCreated(msg.sender, newEvent);
+        PoolEventCreated(msg.sender, newEvent);
         return (address(newEvent));
     }
 }

@@ -1,21 +1,44 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.18;
 import "../Ownable.sol";
+import "../Utils.sol";
 import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
 
-contract Event is Ownable {
+// TODO: Rename to pool event
+// TODO: Make 3 stages - Initializing, Published, OptionBuyingEnded, Resolved
+// see https://solidity.readthedocs.io/en/develop/common-patterns.html
+contract PoolEvent is Ownable, Utils {
 
-    event onEventPublished();
-    event OnEventResolved(address indexed _oracle, address indexed _eventAddr, uint indexed _winningOutcomeId);
-    event OnOptionBought(address indexed _owner, uint indexed _outcomeId, uint indexed _optionId, uint _tokenAmount);
-    event OnEarningsWithdrawn(address indexed _owner, uint _tokenAmount);
-    event OnEventCanceled();
-    event OnUserOptionsCanceled(address indexed _owner);
-    event OnUserOptionCanceled(address indexed _owner, uint _optionId);
-    event OnOptionBuyingEndTimeChanged(uint _newTime);
-    event OnEventEndTimeChanged(uint _newTime);
-    event OnNameChanged(string _newName);
-    event OnOutcomeAdded(uint indexed _outcomeId, string _name);
+    event EventPublished();
+    event EventPaused();
+    event EventCanceled();
+    event EventResolved(address indexed _oracle, uint indexed _winningOutcomeId);
+    event OptionBought(address indexed _owner, uint indexed _outcomeId, uint indexed _optionId, uint _tokenAmount);
+    event EarningsWithdrawn(address indexed _owner, uint _tokenAmount);
+    event UserRefunded(address indexed _owner, uint _tokenAmount);
+    event OptionBuyingEndTimeChanged(uint _newTime);
+    event EventEndTimeChanged(uint _newTime);
+    event EventNameChanged(string _newName);
+    event OutcomeAdded(uint indexed _outcomeId, string _name);
+
+    modifier statusIs(Status _status) {
+        require(status == _status);
+        _;
+    }
+
+    // Check if outcome id is valid
+    modifier outcomeValid(uint _outcome) {
+        require(isOutcomeExist(_outcome));
+        _;
+    }
+
+    enum Status {
+        Initializing,
+        Published,
+        Resolved,
+        Paused,
+        Canceled
+    }
 
     struct Outcome {
         uint    id;
@@ -24,6 +47,7 @@ contract Event is Ownable {
     }
 
     struct Option {
+        uint id;
         uint outcomeId;
         uint tokens;
         bool isWithdrawn;
@@ -32,7 +56,7 @@ contract Event is Ownable {
     string      public  version = "0.1";
     string      public  name;
     IERC20Token public  stox;
-    bool        public  isPublished;
+    Status      public  status;
     uint        public  optionBuyingEndTimeSeconds;
     uint        public  eventEndTimeSeconds;
     uint        public  tokenPool;
@@ -41,18 +65,28 @@ contract Event is Ownable {
     Outcome[]   public  outcomes;
     Option[]    public  options;
 
-    mapping(address => uint[]) public ownerOptions; // Mapping to see the total options for each user (user address -> option ids)
+    // Mapping to see the total options for each user and outcome (user address -> outcome id -> option id[])
+    mapping(address => mapping(uint => uint[])) public ownerOptions; 
 
-    // TODO: Add market maker
-    function Event(address _owner, 
-            address _oracle, 
-            uint _eventEndTimeSeconds, 
-            uint _optionBuyingEndTimeSeconds, 
-            string _name, 
-            IERC20Token _stox) 
+    /**
+        @dev constructor
+    */
+    function PoolEvent(address _owner,
+            address _oracle,
+            uint _eventEndTimeSeconds,
+            uint _optionBuyingEndTimeSeconds,
+            string _name,
+            IERC20Token _stox)
             public 
+            validAddress(_oracle)
+            validAddress(_owner)
+            greaterThanZero(_eventEndTimeSeconds)
+            greaterThanZero(_optionBuyingEndTimeSeconds)
             Ownable(_owner) {
-        require ((_eventEndTimeSeconds >= _optionBuyingEndTimeSeconds) && (address(_oracle) != 0x0));
+
+        require ((_eventEndTimeSeconds >= _optionBuyingEndTimeSeconds));
+
+        status = Status.Initializing;
         oracleAddress = _oracle;
         eventEndTimeSeconds = _eventEndTimeSeconds;
         optionBuyingEndTimeSeconds = _optionBuyingEndTimeSeconds;
@@ -61,128 +95,176 @@ contract Event is Ownable {
     }
 
     // Returns outcome id
-    function addOutcome(string _name) public ownerOnly {
-        require((isPublished == false));
-
+    function addOutcome(string _name) public ownerOnly statusIs(Status.Initializing) {
         uint outcomeId = outcomes.length + 1;
         outcomes.push(Outcome(outcomeId, _name, 0));
 
-        OnOutcomeAdded(outcomeId, _name);
+        OutcomeAdded(outcomeId, _name);
     }
 
     function publish() public ownerOnly {
-        require (outcomes.length > 1);
-        isPublished = true;
+        require ((outcomes.length > 1) && 
+            ((status == Status.Initializing) || 
+                (status == Status.Paused)));
 
-        onEventPublished();
+        status = Status.Published;
+
+        EventPublished();
     }
 
+    // Change option buying end time when event is initializing, paused or canceled
     function setOptionBuyingEndTime(uint _newOptionBuyingEndTimeSeconds) external ownerOnly {
-         require (eventEndTimeSeconds >= _newOptionBuyingEndTimeSeconds);
+         require ((eventEndTimeSeconds >= _newOptionBuyingEndTimeSeconds) && 
+            ((status == Status.Initializing) || 
+                (status == Status.Paused) || 
+                (status == Status.Canceled)));
 
          optionBuyingEndTimeSeconds = _newOptionBuyingEndTimeSeconds;
-         OnOptionBuyingEndTimeChanged(_newOptionBuyingEndTimeSeconds);
+         OptionBuyingEndTimeChanged(_newOptionBuyingEndTimeSeconds);
     }
 
     function setEventEndTime(uint _newEventEndTimeSeconds) external ownerOnly {
          require (_newEventEndTimeSeconds >= optionBuyingEndTimeSeconds);
 
          eventEndTimeSeconds = _newEventEndTimeSeconds;
-         OnEventEndTimeChanged(_newEventEndTimeSeconds);
+         EventEndTimeChanged(_newEventEndTimeSeconds);
     }
 
     function setEventName(string _newName) external ownerOnly {
         name = _newName;
-        OnNameChanged(_newName);
+        EventNameChanged(_newName);
     }
 
     // TODO: Add provider address and max tokens
+    // TODO: Allow user to increase his bet
     // Note: operator should close the options sale several minutes before the actual optionBuyingEndTimeSeconds as blockchain may take 
     // several minutes to process transactions
-    function buyOption(address _owner, uint _tokenAmount, uint _outcomeId) public {
-        require((_owner != 0) &&
-            (_tokenAmount > 0) &&
-            (isPublished == true) &&
-            isOutcomeExist(_outcomeId) &&
+    function buyOption(address _owner, uint _tokenAmount, uint _outcomeId) 
+            public
+            statusIs(Status.Published)
+            validAddress(_owner)
+            greaterThanZero(_tokenAmount)
+            outcomeValid(_outcomeId) {
+        
+        require(
+            (stox.allowance(_owner, this) >= _tokenAmount) &&
             (optionBuyingEndTimeSeconds > now));
 
-        tokenPool = (tokenPool + _tokenAmount);
-        uint optionId = options.push(Option(_outcomeId, _tokenAmount, false)) - 1;
-        ownerOptions[_owner].push(optionId);
-        outcomes[_outcomeId - 1].tokens = (outcomes[_outcomeId - 1].tokens + _tokenAmount);
+        tokenPool = safeAdd(tokenPool, _tokenAmount);
+        outcomes[_outcomeId - 1].tokens = safeAdd(outcomes[_outcomeId - 1].tokens, _tokenAmount);
+
+        uint optionId = safeAdd(options.length, 1);
+        options.push(Option(optionId, _outcomeId, _tokenAmount, false));
+        ownerOptions[_owner][_outcomeId].push(optionId);
+
+        // User should call "approve" first on the smart token contract
         stox.transferFrom(_owner, this, _tokenAmount);
 
-        // TODO: Make deposited user STX in event
-
-        OnOptionBought(_owner, _outcomeId, optionId, _tokenAmount);
+        OptionBought(_owner, _outcomeId, optionId, _tokenAmount);
     }
 
-    function buyOption(uint _tokenAmount, uint _outcomeId) external {
+    function buyOption(uint _tokenAmount, uint _outcomeId) external  {
         buyOption(msg.sender, _tokenAmount, _outcomeId);
     }
 
-    function resolve() public ownerOnly {
+    function resolve() public statusIs(Status.Published) ownerOnly {
         require(isOutcomeExist((Oracle(oracleAddress)).getOutcome(this)));
-        winningOutcomeId = (Oracle(oracleAddress)).getOutcome(this);
 
-        OnEventResolved(oracleAddress, this, winningOutcomeId);
+        winningOutcomeId = (Oracle(oracleAddress)).getOutcome(this);
+        status = Status.Resolved;
+
+        EventResolved(oracleAddress, winningOutcomeId);
     }
 
-    function withdrawEarnings() public {
-        require (isOutcomeExist(winningOutcomeId) && (eventEndTimeSeconds < now) && (ownerOptions[msg.sender].length > 0));
+    function withdrawEarnings() public statusIs(Status.Resolved) {
+        require(
+            (eventEndTimeSeconds < now) &&
+            (hasOptions(msg.sender, winningOutcomeId) &&
+            (!areOptionsWithdrawn(msg.sender, winningOutcomeId))));
 
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
         uint userWinTokens = 0;
 
-        for (uint i = 0; i < ownerOptions[msg.sender].length; i++) {
-            Option storage option = options[ownerOptions[msg.sender][i]];
-            if ((option.isWithdrawn == false) && (option.outcomeId == winningOutcomeId) && (option.tokens > 0)) {
-                // TODO: Use math library
-                userWinTokens = userWinTokens + (option.tokens * tokenPool / winningOutcomeTokens);
-                option.isWithdrawn = true;
-            }
+        for (uint i = 0; i < ownerOptions[msg.sender][winningOutcomeId].length; i++) {
+            Option storage option = options[ownerOptions[msg.sender][winningOutcomeId][i] - 1];
+            userWinTokens = safeAdd(userWinTokens, (safeMul(option.tokens, tokenPool) / winningOutcomeTokens));
+            option.isWithdrawn = true;
         }
 
-        stox.transfer(msg.sender, userWinTokens);
+        if (userWinTokens > 0) {
+            stox.transfer(msg.sender, userWinTokens);
+        }
 
-        // TODO: Send userWinTokens STX to actual address
-        OnEarningsWithdrawn(msg.sender, userWinTokens);
+        EarningsWithdrawn(msg.sender, userWinTokens);
     }
 
-    function calculateEarnings(address _owner) public constant returns (uint) {
-        require (isOutcomeExist(winningOutcomeId));
-
+    function calculateEarnings(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
         uint userWinTokens = 0;
 
-        for (uint i = 0; i < ownerOptions[_owner].length; i++) {
-            Option storage option = options[ownerOptions[_owner][i]];
-            if ((option.outcomeId == winningOutcomeId) && (option.tokens > 0)) {
-                // TODO: Use math library
-                userWinTokens = userWinTokens + (option.tokens * tokenPool / winningOutcomeTokens);
-            }
+        for (uint i = 0; i < ownerOptions[_owner][winningOutcomeId].length; i++) {
+            Option storage option = options[ownerOptions[_owner][winningOutcomeId][i] - 1];
+            userWinTokens = safeAdd(userWinTokens, (safeMul(option.tokens, tokenPool) / winningOutcomeTokens));
         }
 
         return (userWinTokens);
     }
 
-    function isOutcomeExist(uint _outcomeId) constant private returns (bool) {
-        return ((_outcomeId > 0) && (_outcomeId <= outcomes.length));
-    }
-
     /// TODO: Implement
     function cancel() public ownerOnly {
-        OnEventCanceled();
+        require ((status == Status.Published) ||
+            (status == Status.Paused));
+        
+        status = Status.Canceled;
+
+        EventCanceled();
     }
 
-    /// TODO: Implement
-    function cancelOptions(address _owner) public ownerOnly {
-        OnUserOptionsCanceled(_owner);
+    // Cancel the user options and refund the tokens. Called by the event operator.
+    function refund(address _owner) public ownerOnly {
+        require (status != Status.Resolved);
+        
+        performRefund(_owner);
     }
 
-    /// TODO: Implement
-    function cancelOption(address _owner, uint _optionId) public ownerOnly {
-        OnUserOptionCanceled(_owner, _optionId);
+    // Cancel the user options and refund the tokens. Called by the user after the event is canceled. 
+    function refund() public statusIs(Status.Canceled) {
+        performRefund(msg.sender);
+    }
+
+    function performRefund(address _owner) private {
+        uint refundAmount = 0;
+
+        for (uint outcomeId = 1; outcomeId <= outcomes.length; outcomeId++) {
+            for (uint optionPos = 0; optionPos < ownerOptions[_owner][outcomeId].length; optionPos++) {
+                uint optionId = ownerOptions[_owner][outcomeId][optionPos];
+
+                if (options[optionId - 1].tokens > 0) {
+                    outcomes[outcomeId - 1].tokens = safeSub(outcomes[outcomeId - 1].tokens, options[optionId - 1].tokens);
+                    refundAmount = safeAdd(refundAmount, options[optionId - 1].tokens);
+
+                    delete ownerOptions[_owner][outcomeId][optionPos];
+                    delete options[optionId - 1];
+                }
+            }
+
+            if (ownerOptions[_owner][outcomeId].length > 0) {
+                ownerOptions[_owner][outcomeId].length = 0;
+            }
+        }
+
+        if (refundAmount > 0) {
+            tokenPool = safeSub(tokenPool, refundAmount);
+            stox.transfer(_owner, refundAmount);
+        }
+
+        UserRefunded(_owner, refundAmount);
+    }
+
+    function pause() public statusIs(Status.Published) ownerOnly {
+        status = Status.Paused;
+
+        EventPaused();
     }
 
     function getOutcome(uint _outcomeId) public constant returns (string) {
@@ -191,17 +273,20 @@ contract Event is Ownable {
         return (outcomes[_outcomeId - 1].name);
     }
 
-    // returns Outcome id for option id 0 and number of tokens (Use in case provider only allows one option per user)
-    function getOwnerOption(address _owner) public returns (uint, uint) {
-        return (options[ownerOptions[_owner][0]].outcomeId, options[ownerOptions[_owner][0]].tokens);
+    function isOutcomeExist(uint _outcomeId) private constant returns (bool) {
+        return ((_outcomeId > 0) && (_outcomeId <= outcomes.length));
     }
 
-    function getNumberOfOwnerOption(address _owner) public returns (uint) {
-        return (ownerOptions[_owner].length);
+    function areOptionsWithdrawn(address _owner, uint _outcomeId) private constant returns(bool) {
+
+        if (options[ownerOptions[_owner][_outcomeId][0] - 1].isWithdrawn) {
+            return true;
+        }
+
+        return false;
     }
 
-    // returns outcome id and number of tokens
-    function getOwnerOption(address _owner, uint _index) public returns (uint, uint) {
-        return (options[ownerOptions[_owner][_index]].outcomeId, options[ownerOptions[_owner][_index]].tokens);
+    function hasOptions(address _owner, uint _outcomeId) private constant returns(bool) {
+        return (ownerOptions[_owner][_outcomeId].length > 0);
     }
 }
