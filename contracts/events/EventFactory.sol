@@ -12,7 +12,7 @@ contract EventFactory is Ownable {
         factory = _factory;
     }
 
-    function setFactory(IEventFactoryImpl _factory) public {
+    function setFactory(IEventFactoryImpl _factory) public ownerOnly {
         require ((address(_factory) != address(this)) && (address(_factory) != 0x0));
 
         factory = _factory;

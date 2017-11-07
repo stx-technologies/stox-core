@@ -4,21 +4,27 @@ import "../Utils.sol";
 import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
 
-// TODO: Rename to pool event
-// TODO: Make 3 stages - Initializing, Published, OptionBuyingEnded, Resolved
-// see https://solidity.readthedocs.io/en/develop/common-patterns.html
+/// @title Pool event contract - Pool events distributes tokens between all winners according to 
+/// their proportional investment in the winning outcome. The event winning outcome is decided by the oracle.
+/// @author Danny Hellman - <danny@stox.com>
 contract PoolEvent is Ownable, Utils {
 
+    /*
+     *  Events
+     */
     event EventPublished();
     event EventPaused();
     event EventCanceled();
     event EventResolved(address indexed _oracle, uint indexed _winningOutcomeId);
     event OptionBought(address indexed _owner, uint indexed _outcomeId, uint indexed _optionId, uint _tokenAmount);
-    event EarningsWithdrawn(address indexed _owner, uint _tokenAmount);
+    event OptionsRedeemed(address indexed _owner, uint _tokenAmount);
+    event AllOptionsRedeemed();
     event UserRefunded(address indexed _owner, uint _tokenAmount);
+    event AllUsersRefunded();
     event OptionBuyingEndTimeChanged(uint _newTime);
     event EventEndTimeChanged(uint _newTime);
     event EventNameChanged(string _newName);
+    event OracleChanged(address _oracle);
     event OutcomeAdded(uint indexed _outcomeId, string _name);
 
     modifier statusIs(Status _status) {
@@ -26,24 +32,23 @@ contract PoolEvent is Ownable, Utils {
         _;
     }
 
-    // Check if outcome id is valid
     modifier outcomeValid(uint _outcome) {
         require(isOutcomeExist(_outcome));
         _;
     }
 
     enum Status {
-        Initializing,
-        Published,
-        Resolved,
-        Paused,
-        Canceled
+        Initializing,   // Status when the event is created. This is when we define the event outcomes.
+        Published,      // The event is published and users can now buy options.
+        Resolved,       // The event is resolved and users can redeem their options.
+        Paused,         // The event is paused and users can no longer buy options until the event is published again.
+        Canceled        // The event is canceled. Users can get their invested tokens refunded to them.
     }
 
     struct Outcome {
         uint    id;
         string  name;
-        uint    tokens;
+        uint    tokens; // Total tokens used to buy options for this outcome
     }
 
     struct Option {
@@ -51,6 +56,7 @@ contract PoolEvent is Ownable, Utils {
         uint outcomeId;
         uint tokens;
         bool isWithdrawn;
+        address owner;
     }
 
     string      public  version = "0.1";
@@ -59,8 +65,8 @@ contract PoolEvent is Ownable, Utils {
     Status      public  status;
     uint        public  optionBuyingEndTimeSeconds;
     uint        public  eventEndTimeSeconds;
-    uint        public  tokenPool;
-    address     public  oracleAddress;
+    uint        public  tokenPool;                  // Total tokens used to buy options in this event
+    address     public  oracleAddress;              // When the event is resolved the oracle will tell the event who is the winning outcome
     uint        public  winningOutcomeId;
     Outcome[]   public  outcomes;
     Option[]    public  options;
@@ -84,7 +90,7 @@ contract PoolEvent is Ownable, Utils {
             greaterThanZero(_optionBuyingEndTimeSeconds)
             Ownable(_owner) {
 
-        require ((_eventEndTimeSeconds >= _optionBuyingEndTimeSeconds));
+        require (_eventEndTimeSeconds >= _optionBuyingEndTimeSeconds);
 
         status = Status.Initializing;
         oracleAddress = _oracle;
@@ -96,7 +102,7 @@ contract PoolEvent is Ownable, Utils {
 
     // Returns outcome id
     function addOutcome(string _name) public ownerOnly statusIs(Status.Initializing) {
-        uint outcomeId = outcomes.length + 1;
+        uint outcomeId = safeAdd(outcomes.length, 1);
         outcomes.push(Outcome(outcomeId, _name, 0));
 
         OutcomeAdded(outcomeId, _name);
@@ -113,26 +119,37 @@ contract PoolEvent is Ownable, Utils {
     }
 
     // Change option buying end time when event is initializing, paused or canceled
-    function setOptionBuyingEndTime(uint _newOptionBuyingEndTimeSeconds) external ownerOnly {
+    function setOptionBuyingEndTime(uint _newOptionBuyingEndTimeSeconds) greaterThanZero(_newOptionBuyingEndTimeSeconds) external ownerOnly {
          require ((eventEndTimeSeconds >= _newOptionBuyingEndTimeSeconds) && 
             ((status == Status.Initializing) || 
-                (status == Status.Paused) || 
-                (status == Status.Canceled)));
+                (status == Status.Paused)));
 
          optionBuyingEndTimeSeconds = _newOptionBuyingEndTimeSeconds;
          OptionBuyingEndTimeChanged(_newOptionBuyingEndTimeSeconds);
     }
 
     function setEventEndTime(uint _newEventEndTimeSeconds) external ownerOnly {
-         require (_newEventEndTimeSeconds >= optionBuyingEndTimeSeconds);
+         require ((_newEventEndTimeSeconds >= optionBuyingEndTimeSeconds) && 
+            ((status == Status.Initializing) || 
+                (status == Status.Paused)));
 
          eventEndTimeSeconds = _newEventEndTimeSeconds;
+
          EventEndTimeChanged(_newEventEndTimeSeconds);
     }
 
     function setEventName(string _newName) external ownerOnly {
         name = _newName;
+
         EventNameChanged(_newName);
+    }
+
+    function setOracle(address _oracle) validAddress(_oracle) notThis(_oracle) external ownerOnly {
+        require (status != Status.Resolved);
+
+        oracleAddress = _oracle;
+
+        OracleChanged(oracleAddress);
     }
 
     // TODO: Add provider address and max tokens
@@ -154,7 +171,7 @@ contract PoolEvent is Ownable, Utils {
         outcomes[_outcomeId - 1].tokens = safeAdd(outcomes[_outcomeId - 1].tokens, _tokenAmount);
 
         uint optionId = safeAdd(options.length, 1);
-        options.push(Option(optionId, _outcomeId, _tokenAmount, false));
+        options.push(Option(optionId, _outcomeId, _tokenAmount, false, _owner));
         ownerOptions[_owner][_outcomeId].push(optionId);
 
         // User should call "approve" first on the smart token contract
@@ -176,7 +193,7 @@ contract PoolEvent is Ownable, Utils {
         EventResolved(oracleAddress, winningOutcomeId);
     }
 
-    function withdrawEarnings() public statusIs(Status.Resolved) {
+    function redeemUserOptions() public statusIs(Status.Resolved) {
         require(
             (eventEndTimeSeconds < now) &&
             (hasOptions(msg.sender, winningOutcomeId) &&
@@ -195,10 +212,27 @@ contract PoolEvent is Ownable, Utils {
             stox.transfer(msg.sender, userWinTokens);
         }
 
-        EarningsWithdrawn(msg.sender, userWinTokens);
+        OptionsRedeemed(msg.sender, userWinTokens);
     }
 
-    function calculateEarnings(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
+    function redeemAllOptions() public ownerOnly statusIs(Status.Resolved) {
+        require(eventEndTimeSeconds < now);
+
+        uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
+
+        for (uint i = 0; i < options.length; i++) {
+            Option storage option = options[i];
+            if ((option.id != 0) && (option.outcomeId == winningOutcomeId) && !option.isWithdrawn) {
+                option.isWithdrawn = true;
+                uint userWinTokens = safeMul(option.tokens, tokenPool) / winningOutcomeTokens;
+                stox.transfer(option.owner, userWinTokens);
+            }
+        }
+
+        AllOptionsRedeemed();
+    }
+
+    function calculateUserOptionsRedeemValue(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
         uint userWinTokens = 0;
 
@@ -208,6 +242,17 @@ contract PoolEvent is Ownable, Utils {
         }
 
         return (userWinTokens);
+    }
+
+    function calculateUserOptionsValue(address _owner, _outcomeId) external constant returns (uint) {
+        uint userTokens = 0;
+
+        for (uint i = 0; i < ownerOptions[_owner][_outcomeId].length; i++) {
+            Option storage option = options[ownerOptions[_owner][_outcomeId][i] - 1];
+            userTokens = safeAdd(userTokens, option.tokens);
+        }
+
+        return (userTokens);
     }
 
     /// TODO: Implement
@@ -233,6 +278,8 @@ contract PoolEvent is Ownable, Utils {
     }
 
     function performRefund(address _owner) private {
+        require(tokenPool > 0);
+        
         uint refundAmount = 0;
 
         for (uint outcomeId = 1; outcomeId <= outcomes.length; outcomeId++) {
@@ -261,6 +308,25 @@ contract PoolEvent is Ownable, Utils {
         UserRefunded(_owner, refundAmount);
     }
 
+    function refundAllUsers() public ownerOnly statusIs(Status.Canceled) {
+        require(tokenPool > 0);
+
+        for (uint i = 0; i < options.length; i++) {
+            Option storage option = options[i];
+            if (option.id != 0) {
+                uint refundTokens = option.tokens;
+                address owner = option.owner;
+                delete options[i];
+
+                stox.transfer(owner, refundTokens);
+            }
+        }
+
+        tokenPool = 0;
+        
+        AllUsersRefunded();
+    }
+
     function pause() public statusIs(Status.Published) ownerOnly {
         status = Status.Paused;
 
@@ -279,11 +345,13 @@ contract PoolEvent is Ownable, Utils {
 
     function areOptionsWithdrawn(address _owner, uint _outcomeId) private constant returns(bool) {
 
-        if (options[ownerOptions[_owner][_outcomeId][0] - 1].isWithdrawn) {
-            return true;
+        for (uint i = 0; i < ownerOptions[_owner][_outcomeId].length; i++) {
+            if (!options[ownerOptions[_owner][_outcomeId][i] - 1].isWithdrawn) {
+                return false;
+            }
         }
 
-        return false;
+        return true;
     }
 
     function hasOptions(address _owner, uint _outcomeId) private constant returns(bool) {

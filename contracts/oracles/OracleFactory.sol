@@ -1,6 +1,6 @@
 pragma solidity ^0.4.18;
-import "../Ownable.sol";
 import "./IOracleFactoryImpl.sol";
+import "../Ownable.sol";
 
 contract OracleFactory is Ownable {
     event OracleCreated(address indexed _creator, address _oracle);
@@ -11,7 +11,7 @@ contract OracleFactory is Ownable {
         factory = _factory;
     }
 
-    function setFactory(IOracleFactoryImpl _factory) public {
+    function setFactory(IOracleFactoryImpl _factory) public ownerOnly {
         require ((address(_factory) != address(this)) && (address(_factory) != 0x0));
 
         factory = _factory;

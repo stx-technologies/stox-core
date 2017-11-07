@@ -1,7 +1,8 @@
 pragma solidity ^0.4.18;
 import "../Ownable.sol";
+import "../Utils.sol";
 
-contract Oracle is Ownable {
+contract Oracle is Ownable, Utils {
 
     event OutcomeAssigned(address indexed _eventAddress, uint indexed _outcomeId);
     event EventRegistered(address indexed _eventAddress);
@@ -17,7 +18,7 @@ contract Oracle is Ownable {
         name = _name;
     }
 
-    function registerEvent(address _eventToRegister) public ownerOnly {
+    function registerEvent(address _eventToRegister) public validAddress(_eventToRegister) ownerOnly {
         events[_eventToRegister] = _eventToRegister;
 
         EventRegistered(_eventToRegister);
@@ -30,7 +31,11 @@ contract Oracle is Ownable {
     }
 
     // TODO: Set outcome should not immediately call event.setWinningOutcome, as we don't want accidential results to trigger events winnings
-    function setOutcome (address _eventAddress, uint _outcomeId) public ownerOnly {
+    function setOutcome (address _eventAddress, uint _outcomeId) 
+            public 
+            validAddress(_eventAddress)
+            ownerOnly {
+        
         require((_outcomeId != 0) && (address(events[_eventAddress]) != 0));
         eventOutcome[_eventAddress] = _outcomeId;
         
