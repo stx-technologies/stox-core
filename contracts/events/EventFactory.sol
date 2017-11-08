@@ -2,6 +2,12 @@ pragma solidity ^0.4.18;
 import "./IEventFactoryImpl.sol";
 import "../Ownable.sol";
 
+/**
+    @title EventFactory contract - A factory contract for generating events.
+    It holds a factory interface object so we can update the event code without deploying a new event factory to the ethereum netowrk.
+
+    @author Danny Hellman - <danny@stox.com>
+ */
 contract EventFactory is Ownable {
 
     event PoolEventCreated(address indexed _creator, address indexed _newEvent);

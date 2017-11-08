@@ -2,7 +2,7 @@ pragma solidity ^0.4.18;
 
 
 /*
-    Provides support and utilities for contract ownership
+    @title Provides support and utilities for contract ownership
 */
 contract Ownable {
     address public owner;
@@ -17,7 +17,9 @@ contract Ownable {
         owner = _owner;
     }
 
-    // allows execution by the owner only
+    /**
+        @dev allows execution by the owner only
+    */
     modifier ownerOnly {
         require(msg.sender == owner);
         _;

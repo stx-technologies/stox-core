@@ -2,6 +2,11 @@ pragma solidity ^0.4.18;
 import "./Oracle.sol";
 import "./IOracleFactoryImpl.sol";
 
+/**
+    @title OracleFactoryImpl contract - The implementation for the Oracle Factory
+
+    @author Danny Hellman - <danny@stox.com>
+ */
 contract OracleFactoryImpl is IOracleFactoryImpl {
 
     function createOracle(address _owner, string _name) public returns(address) {
