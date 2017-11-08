@@ -90,10 +90,10 @@ contract PoolEvent is Ownable, Utils {
     }
 
     struct Option {
-        uint id;            // Id will start at 1, and increase by 1 for every new option
-        uint outcomeId;
-        uint tokens;
-        bool isWithdrawn;
+        uint    id;         // Id will start at 1, and increase by 1 for every new option
+        uint    outcomeId;
+        uint    tokens;
+        bool    isWithdrawn;
         address owner;
     }
 
