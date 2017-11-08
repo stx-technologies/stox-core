@@ -22,13 +22,13 @@ import "../token/IERC20Token.sol";
 
     Total token pool: 600
 
-    After the event ended, the oracle decided that the winning outcome is Outcome1
+    After the event ends, the oracle decides that the winning outcome is Outcome1
 
-    Users options are now has the following value:
+    Users can now withdraw from their options the following token amount:
     User A -> 150 tokens (100 / (100 + 300) * 600)
     User B -> 450 tokens (300 / (100 + 300) * 600)
-    Uset C -> 0 tokens
-    Uset D -> 0 tokens
+    User C -> 0 tokens
+    User D -> 0 tokens
 
     @author Danny Hellman - <danny@stox.com>
  */
@@ -78,7 +78,7 @@ contract PoolEvent is Ownable, Utils {
     enum Status {
         Initializing,       // The status when the event is first created. During this stage we define the event outcomes.
         Published,          // The event is published and users can now buy options.
-        Resolved,           // The event is resolved and users can redeem their options.
+        Resolved,           // The event is resolved and users can withdraw their options.
         Paused,             // The event is paused and users can no longer buy options until the event is published again.
         Canceled            // The event is canceled. Users can get their invested tokens refunded to them.
     }
