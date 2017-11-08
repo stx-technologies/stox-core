@@ -3,6 +3,7 @@ import "../Ownable.sol";
 import "../Utils.sol";
 import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
+
 /**
     @title Pool event contract - Pool events distributes tokens between all winners according to 
     their proportional investment in the winning outcome. The event winning outcome is decided by the oracle.
