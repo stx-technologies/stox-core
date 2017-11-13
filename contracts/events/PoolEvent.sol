@@ -29,8 +29,6 @@ import "../token/IERC20Token.sol";
     User B -> 450 tokens (300 / (100 + 300) * 600)
     User C -> 0 tokens
     User D -> 0 tokens
-
-    @author Danny Hellman - <danny@stox.com>
  */
 contract PoolEvent is Ownable, Utils {
 
@@ -119,7 +117,7 @@ contract PoolEvent is Ownable, Utils {
     // Mapping to see all the options bought for each user and outcome (user address -> outcome id -> option id[])
     mapping(address => mapping(uint => uint[])) public ownerOptions; 
 
-    /**
+    /*
         @dev constructor
 
         @param _owner                       Event owner / operator
@@ -138,6 +136,7 @@ contract PoolEvent is Ownable, Utils {
             public 
             validAddress(_oracle)
             validAddress(_owner)
+            validAddress(_stox)
             greaterThanZero(_eventEndTimeSeconds)
             greaterThanZero(_optionBuyingEndTimeSeconds)
             Ownable(_owner) {
@@ -152,7 +151,7 @@ contract PoolEvent is Ownable, Utils {
         stox = _stox;
     }
 
-    /**
+    /*
         @dev Allow the event owner to change add a new outcome to the event
 
         @param _name Outcome name
@@ -164,7 +163,7 @@ contract PoolEvent is Ownable, Utils {
         OutcomeAdded(outcomeId, _name);
     }
 
-    /**
+    /*
         @dev Allow the event owner to publish the event - Users can now buy option on the various outcomes.
     */
     function publish() public ownerOnly {
@@ -177,7 +176,7 @@ contract PoolEvent is Ownable, Utils {
         EventPublished();
     }
 
-    /**
+    /*
         @dev Allow the event owner to change option buying end time when event is initializing or paused
 
         @param _newOptionBuyingEndTimeSeconds Option buying end time
@@ -191,7 +190,7 @@ contract PoolEvent is Ownable, Utils {
          OptionBuyingEndTimeChanged(_newOptionBuyingEndTimeSeconds);
     }
 
-    /**
+    /*
         @dev Allow the event owner to change the event end time when event is initializing or paused
 
         @param _newEventEndTimeSeconds Event end time
@@ -206,7 +205,7 @@ contract PoolEvent is Ownable, Utils {
          EventEndTimeChanged(_newEventEndTimeSeconds);
     }
 
-    /**
+    /*
         @dev Allow the event owner to change the name
 
         @param _newName Event name
@@ -217,7 +216,7 @@ contract PoolEvent is Ownable, Utils {
         EventNameChanged(_newName);
     }
 
-    /**
+    /*
         @dev Allow the event owner to change the oracle address
 
         @param _oracle Oracle address
@@ -230,7 +229,7 @@ contract PoolEvent is Ownable, Utils {
         OracleChanged(oracleAddress);
     }
 
-    /**
+    /*
         @dev Allow any user to buy an option on a specific outcome. note that users can buy multiple options on a specific outcome.
         Before calling buyOption the user should first call the approve(thisEventAddress, tokenAmount) on the 
         stox token (or any other ERC20 token).
@@ -262,7 +261,7 @@ contract PoolEvent is Ownable, Utils {
         OptionBought(_owner, _outcomeId, optionId, _tokenAmount);
     }
 
-    /**
+    /*
         @dev Allow any user to buy an option on a specific outcome. 
         Before calling buyOption the user should first call the approve(thisEventAddress, tokenAmount) on the 
         stox token (or any other ERC20 token).
@@ -274,7 +273,7 @@ contract PoolEvent is Ownable, Utils {
         buyOption(msg.sender, _tokenAmount, _outcomeId);
     }
 
-    /**
+    /*
         @dev Allow the event owner to resolve the event.
         Before calling resolve() the oracle owner should first set the event outcome by calling setOutcome(thisEventAddress, winningOutcomeId) 
         in the Oracle contract.
@@ -289,7 +288,7 @@ contract PoolEvent is Ownable, Utils {
         EventResolved(oracleAddress, winningOutcomeId);
     }
 
-    /**
+    /*
         @dev After the event is resolved the user can withdraw tokens from his winning options
         Alternatively the event owner / operator can choose to pay all the users himself using the payAllOptions() function
     */
@@ -314,7 +313,7 @@ contract PoolEvent is Ownable, Utils {
         OptionsWithdrawn(msg.sender, userWinTokens);
     }
 
-    /**
+    /*
         @dev After the event is resolved the event owner can pay tokens for all the winning options
         Alternatively the event owner / operator can choose that the users will need to withdraw the funds using the withdrawOptions() function
     */    
@@ -334,7 +333,7 @@ contract PoolEvent is Ownable, Utils {
         AllOptionsPaid();
     }
 
-    /**
+    /*
         @dev Returns the amount of tokens a user can withdraw from his option after the event is resolved
 
         @param _owner   Options owner
@@ -353,7 +352,7 @@ contract PoolEvent is Ownable, Utils {
         return (userWinTokens);
     }
 
-    /**
+    /*
         @dev Returns the amount of tokens a user invested in an outcome options
 
         @param _owner       Options owner
@@ -372,7 +371,7 @@ contract PoolEvent is Ownable, Utils {
         return (userTokens);
     }
 
-    /**
+    /*
         @dev Allow the event owner to cancel the event.
         After the event is canceled users can no longer buy options, and are able to get a refund for their options tokens.
     */
@@ -385,7 +384,7 @@ contract PoolEvent is Ownable, Utils {
         EventCanceled();
     }
 
-    /**
+    /*
         @dev Allow to event owner / operator to cancel the user's options and refund the tokens.
 
         @param _owner Options owner
@@ -396,7 +395,7 @@ contract PoolEvent is Ownable, Utils {
         performRefund(_owner);
     }
 
-    /**
+    /*
         @dev Allow the user to cancel his options and refund the tokens he invested in options. 
         Can be called only after the event is canceled.
     */
@@ -404,7 +403,7 @@ contract PoolEvent is Ownable, Utils {
         performRefund(msg.sender);
     }
 
-    /**
+    /*
         @dev Refund a specific user's options tokens and cancel the user's options.
 
         @param _owner Options owner
@@ -441,7 +440,7 @@ contract PoolEvent is Ownable, Utils {
         UserRefunded(_owner, refundAmount);
     }
 
-    /**
+    /*
         @dev Allow to event owner / operator to cancel all the users options and refund their tokens.
     */
     function refundAllUsers() public ownerOnly statusIs(Status.Canceled) {
@@ -463,7 +462,7 @@ contract PoolEvent is Ownable, Utils {
         AllUsersRefunded();
     }
 
-    /**
+    /*
         @dev Allow the event owner to pause the event.
         After the event is paused users can no longer buy options until the event is republished
     */
@@ -473,31 +472,31 @@ contract PoolEvent is Ownable, Utils {
         EventPaused();
     }
 
-    /**
+    /*
         @dev Returns the outcome name of a specific outcome id
 
         @param _outcomeId   Outcome id
 
         @return             Outcome name
     */
-    function getOutcome(uint _outcomeId) public constant returns (string) {
+    function getOutcome(uint _outcomeId) public view returns (string) {
         require(isOutcomeExist(_outcomeId));
 
         return (outcomes[_outcomeId - 1].name);
     }
 
-    /**
+    /*
         @dev Returns true if the event contains a specific outcome id
 
         @param _outcomeId   Outcome id
 
         @return             true if the outcome exists
     */
-    function isOutcomeExist(uint _outcomeId) private constant returns (bool) {
+    function isOutcomeExist(uint _outcomeId) private view returns (bool) {
         return ((_outcomeId > 0) && (_outcomeId <= outcomes.length));
     }
 
-    /**
+    /*
         @dev Returns true if the user's options on an outcome are all withdrawn
 
         @param _owner       Options owner
@@ -505,7 +504,7 @@ contract PoolEvent is Ownable, Utils {
 
         @return             true if the user's options  on an outcome are all withdrawn
     */
-    function areOptionsWithdrawn(address _owner, uint _outcomeId) private constant returns(bool) {
+    function areOptionsWithdrawn(address _owner, uint _outcomeId) private view returns(bool) {
 
         for (uint i = 0; i < ownerOptions[_owner][_outcomeId].length; i++) {
             if (!options[ownerOptions[_owner][_outcomeId][i] - 1].isWithdrawn) {
@@ -516,7 +515,7 @@ contract PoolEvent is Ownable, Utils {
         return true;
     }
 
-    /**
+    /*
         @dev Returns true if the user bought options on a specific outcome
 
         @param _owner       Options owner
@@ -524,7 +523,7 @@ contract PoolEvent is Ownable, Utils {
 
         @return             true if the user bought options on a specific outcome
     */
-    function hasOptions(address _owner, uint _outcomeId) private constant returns(bool) {
+    function hasOptions(address _owner, uint _outcomeId) private view returns(bool) {
         return (ownerOptions[_owner][_outcomeId].length > 0);
     }
 }

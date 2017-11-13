@@ -2,11 +2,9 @@ pragma solidity ^0.4.18;
 import "../Ownable.sol";
 import "../Utils.sol";
 
-/**
+/*
     @title Oracle contract - Basic oracle implementation.
     The oracle can register events and set their outcomes.
-
-    @author Danny Hellman - <danny@stox.com>
  */
 contract Oracle is Ownable, Utils {
 
@@ -23,10 +21,10 @@ contract Oracle is Ownable, Utils {
      */
     string                      public version = "0.1";
     string                      public name;
-    mapping(address=>address)   public events;          // An index of all the events registered for this oracle
+    mapping(address=>bool)      public events;          // An index of all the events registered for this oracle
     mapping(address=>uint)      public eventOutcome;    // Mapping of event -> outcomes
 
-    /**
+    /*
         @dev constructor
 
         @param _owner                       Oracle owner / operator
@@ -36,18 +34,18 @@ contract Oracle is Ownable, Utils {
         name = _name;
     }
 
-    /**
+    /*
         @dev Allow the oracle owner to register an event
 
         @param _event Event address to register
     */
     function registerEvent(address _event) public validAddress(_event) ownerOnly {
-        events[_event] = _event;
+        events[_event] = true;
 
         EventRegistered(_event);
     }
 
-    /**
+    /*
         @dev Allow the oracle owner to unregister an event
 
         @param _event Event address to unregister
@@ -58,7 +56,11 @@ contract Oracle is Ownable, Utils {
         EventUnregistered(_event);
     }
 
-    /**
+    function isEventRegistered(address _event) private view returns (bool) {
+        return (events[_event]);
+    }
+
+    /*
         @dev Allow the oracle owner to set a specific outcome for an event
         The event should be registered before calling set outcome.
         Note that setting the outcome does not directly affect the event contract. The event contract still needs to call the resolve()
@@ -70,27 +72,28 @@ contract Oracle is Ownable, Utils {
     function setOutcome (address _event, uint _outcomeId) 
             public 
             validAddress(_event)
-            validAddress(address(events[_event]))
             greaterThanZero(_outcomeId)
             ownerOnly {
+        
+        require(isEventRegistered(_event));
         
         eventOutcome[_event] = _outcomeId;
         
         OutcomeAssigned(_event, _outcomeId);
     }
 
-    /**
+    /*
         @dev Returns the outcome id for a specific event
 
         @param _event   Event address
 
         @return         Outcome id
     */ 
-    function getOutcome(address _event) public constant returns (uint) {
+    function getOutcome(address _event) public view returns (uint) {
         return eventOutcome[_event];
     }
 
-    /**
+    /*
         @dev Allow the oracle owner to set the oracle name
 
         @param _newName New oracle name

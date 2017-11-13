@@ -10,14 +10,14 @@ contract Ownable {
 
     event OwnerUpdate(address _prevOwner, address _newOwner);
 
-    /**
+    /*
         @dev constructor
     */
     function Ownable(address _owner) public {
         owner = _owner;
     }
 
-    /**
+    /*
         @dev allows execution by the owner only
     */
     modifier ownerOnly {
@@ -25,7 +25,7 @@ contract Ownable {
         _;
     }
 
-    /**
+    /*
         @dev allows transferring the contract ownership
         the new owner still needs to accept the transfer
         can only be called by the contract owner
@@ -37,13 +37,13 @@ contract Ownable {
         newOwner = _newOwner;
     }
 
-    /**
+    /*
         @dev used by a new owner to accept an ownership transfer
     */
     function acceptOwnership() public {
         require(msg.sender == newOwner);
         OwnerUpdate(owner, newOwner);
         owner = newOwner;
-        newOwner = 0x0;
+        newOwner = address(0);
     }
 }

@@ -3,16 +3,14 @@ import "./PoolEvent.sol";
 import "./IEventFactoryImpl.sol";
 import "../token/IERC20Token.sol";
 
-/**
+/*
     @title EventFactoryImpl contract - The implementation for the Event Factory
-
-    @author Danny Hellman - <danny@stox.com>
  */
-contract EventFactoryImpl is IEventFactoryImpl {
+contract EventFactoryImpl is IEventFactoryImpl, Utils {
 
     IERC20Token public stox; // Stox ERC20 token
 
-    function EventFactoryImpl(IERC20Token _stox) public {
+    function EventFactoryImpl(IERC20Token _stox) public validAddress(_stox) {
         stox = _stox;
     }
 
