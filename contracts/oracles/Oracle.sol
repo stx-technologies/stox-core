@@ -21,8 +21,8 @@ contract Oracle is Ownable, Utils {
      */
     string                      public version = "0.1";
     string                      public name;
-    mapping(address=>bool)      public events;          // An index of all the events registered for this oracle
-    mapping(address=>uint)      public eventOutcome;    // Mapping of event -> outcomes
+    mapping(address=>bool)      public eventsRegistered;    // An index of all the events registered for this oracle
+    mapping(address=>uint)      public eventsOutcome;       // Mapping of event -> outcomes
 
     /*
         @dev constructor
@@ -40,7 +40,7 @@ contract Oracle is Ownable, Utils {
         @param _event Event address to register
     */
     function registerEvent(address _event) public validAddress(_event) ownerOnly {
-        events[_event] = true;
+        eventsRegistered[_event] = true;
 
         EventRegistered(_event);
     }
@@ -51,13 +51,13 @@ contract Oracle is Ownable, Utils {
         @param _event Event address to unregister
     */
     function unRegisterEvent(address _event) public validAddress(_event) ownerOnly {
-        delete events[_event];
+        delete eventsRegistered[_event];
 
         EventUnregistered(_event);
     }
 
     function isEventRegistered(address _event) private view returns (bool) {
-        return (events[_event]);
+        return (eventsRegistered[_event]);
     }
 
     /*
@@ -77,7 +77,7 @@ contract Oracle is Ownable, Utils {
         
         require(isEventRegistered(_event));
         
-        eventOutcome[_event] = _outcomeId;
+        eventsOutcome[_event] = _outcomeId;
         
         OutcomeAssigned(_event, _outcomeId);
     }
@@ -90,7 +90,7 @@ contract Oracle is Ownable, Utils {
         @return         Outcome id
     */ 
     function getOutcome(address _event) public view returns (uint) {
-        return eventOutcome[_event];
+        return eventsOutcome[_event];
     }
 
     /*
