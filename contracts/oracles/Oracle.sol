@@ -30,7 +30,7 @@ contract Oracle is Ownable, Utils {
         @param _owner                       Oracle owner / operator
         @param _name                        Oracle name
     */
-    function Oracle(address _owner, string _name) public Ownable(_owner) {
+    function Oracle(address _owner, string _name) public notEmpty(_name) Ownable(_owner) {
         name = _name;
     }
 
@@ -98,7 +98,7 @@ contract Oracle is Ownable, Utils {
 
         @param _newName New oracle name
     */
-    function setName(string _newName) external ownerOnly {
+    function setName(string _newName) notEmpty(_newName) external ownerOnly {
         name = _newName;
         OracleNameChanged(_newName);
     }

@@ -34,6 +34,14 @@ contract Utils {
         _;
     }
 
+    /*
+        @dev verifies that the string is not empty
+    */
+    modifier notEmpty(string _str) {
+        require(bytes(_str).length > 0);
+        _;
+    }
+
     // Overflow protected math functions
 
     /*

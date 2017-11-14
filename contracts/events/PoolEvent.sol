@@ -139,6 +139,7 @@ contract PoolEvent is Ownable, Utils {
             validAddress(_stox)
             greaterThanZero(_eventEndTimeSeconds)
             greaterThanZero(_optionBuyingEndTimeSeconds)
+            notEmpty(_name)
             Ownable(_owner) {
 
         require (_eventEndTimeSeconds >= _optionBuyingEndTimeSeconds);
@@ -156,7 +157,7 @@ contract PoolEvent is Ownable, Utils {
 
         @param _name Outcome name
     */
-    function addOutcome(string _name) public ownerOnly statusIs(Status.Initializing) {
+    function addOutcome(string _name) public ownerOnly notEmpty(_name) statusIs(Status.Initializing) {
         uint outcomeId = safeAdd(outcomes.length, 1);
         outcomes.push(Outcome(outcomeId, _name, 0));
 
@@ -210,7 +211,7 @@ contract PoolEvent is Ownable, Utils {
 
         @param _newName Event name
     */
-    function setEventName(string _newName) external ownerOnly {
+    function setEventName(string _newName) notEmpty(_newName) external ownerOnly {
         name = _newName;
 
         EventNameChanged(_newName);
