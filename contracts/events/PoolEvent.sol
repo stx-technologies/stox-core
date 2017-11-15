@@ -284,6 +284,10 @@ contract PoolEvent is Ownable, Utils {
             (optionBuyingEndTimeSeconds < now));
 
         winningOutcomeId = (Oracle(oracleAddress)).getOutcome(this);
+
+        // In the very unlikely event that no one bought an option on the winning outcome - assert
+        assert(outcomes[winningOutcomeId - 1].tokens == 0);
+
         status = Status.Resolved;
 
         EventResolved(oracleAddress, winningOutcomeId);
