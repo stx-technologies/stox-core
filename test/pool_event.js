@@ -12,7 +12,6 @@ const OracleFactoryImpl = artifacts.require("./oracles/OracleFactoryImpl.sol");
 let stoxTestToken;
 let eventFactory;
 let eventFactoryImpl;
-let poolEvent;
 let oracleFactory;
 let oracleFactoryImpl;
 let oracle;
@@ -39,7 +38,7 @@ contract('PoolEvent', function(accounts) {
 
     let tommorowInSeconds;
 
-    async function init() {
+    async function initOracle() {
         //oracle = await oracleFactory.createOracle("Test Oracle", {from: oracleOperator});
         await oracleFactory.createOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
             oracle = Oracle.at(getLogArg(result, "_oracle"));
@@ -47,25 +46,31 @@ contract('PoolEvent', function(accounts) {
     }
 
     async function initEvent() {
-        init();
-        
+        let poolEvent;
         await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Event", {from: eventOperator}).then(function(result) {
             poolEvent = PoolEvent.at(getLogArg(result, "_newEvent"));
         });
+
+        return poolEvent;
     }
 
     async function initEventWithOutcomes(event) {
-        initEvent();
+        let poolEvent = await initEvent();
 
         await poolEvent.addOutcome("o1", {from: eventOperator});
         await poolEvent.addOutcome("o2", {from: eventOperator});
         await poolEvent.addOutcome("o3", {from: eventOperator});
+
+        return poolEvent;
     }
 
     async function initPlayers() {
+        let newPoolEvent;
         await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Event", {from: eventOperator}).then(function(result) {
-            poolEvent = PoolEvent.at(getLogArg(result, "_newEvent"));
+            newPoolEvent = PoolEvent.at(getLogArg(result, "_newEvent"));
         });
+
+        return newPoolEvent;
     }
 
     before(async function() {
@@ -81,11 +86,11 @@ contract('PoolEvent', function(accounts) {
         var tomorrow = new Date();
         tomorrow.setDate((new Date).getDate() + 1);
         tommorowInSeconds = Math.round(tomorrow.getTime() / 1000);
+
+        await initOracle();
       });
 
     it("should throw if event name is invalid", async function() {
-        await init();
-
         await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Event", {from: eventOperator}).then(function(result) {
             poolEvent = PoolEvent.at(getLogArg(result, "_newEvent"));
         });
@@ -96,8 +101,6 @@ contract('PoolEvent', function(accounts) {
      });
 
     it("should throw if oracle address is invalid", async function() {
-        await init();
-
         try {
             await eventFactory.createPoolEvent(0, tommorowInSeconds, tommorowInSeconds, "Test Event", {from: eventOperator});
         } catch (error) {
@@ -108,8 +111,6 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("should throw if event end time is invalid", async function() {
-        await init();
-
         try {
             await eventFactory.createPoolEvent(oracle.address, 0, tommorowInSeconds, "Test Event", {from: eventOperator});
         } catch (error) {
@@ -119,9 +120,7 @@ contract('PoolEvent', function(accounts) {
         assert.equal(false, "Didn't throw");
     });
 
-    it("should throw if options buying end time is invalid", async function() {
-        await init();
-
+    it("should throw if items buying end time is invalid", async function() {
         try {
             await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, 0, "Test Event", {from: eventOperator});
         } catch (error) {
@@ -131,9 +130,7 @@ contract('PoolEvent', function(accounts) {
         assert.equal(false, "Didn't throw");
     });
 
-    it("should throw if options buying end time is invalid", async function() {
-        await init();
-
+    it("should throw if items buying end time is invalid", async function() {
         try {
             await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, 0, "Test Event", {from: eventOperator});
         } catch (error) {
@@ -143,9 +140,7 @@ contract('PoolEvent', function(accounts) {
         assert.equal(false, "Didn't throw");
     });
 
-    it("should throw if event end time < options buying end time", async function() {
-        await init();
-
+    it("should throw if event end time < items buying end time", async function() {
         try {
             await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, (tommorowInSeconds + 1000), "Test Event", {from: eventOperator});
         } catch (error) {
@@ -156,8 +151,8 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("should throw if outcome name is invalid", async function() {
-        await initEvent();
-
+        let poolEvent = await initEvent();
+        
         try {
             await poolEvent.addOutcome("", {from: eventOperator});
         } catch (error) {
@@ -168,7 +163,7 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("should throw if a non owner added outcome", async function() {
-        await initEvent();
+        let poolEvent = await initEvent();
 
         try {
             await poolEvent.addOutcome("outcome1", {from: player1});
@@ -180,16 +175,15 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("verify that the owner can add an outcome", async function() {
-        await initEvent();
+        let poolEvent = await initEvent();
         await poolEvent.addOutcome("outcome1", {from: eventOperator});
-        
         let outcomeName = await poolEvent.getOutcome(1);
         
         assert.equal(outcomeName, "outcome1");
     });
 
     it("should throw if event is published without outcomes", async function() {
-        await initEvent();
+        let poolEvent = await initEvent();
 
         try {
             await poolEvent.publish({from: eventOperator});
@@ -201,7 +195,7 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("should throw if event is published with 1 outcome", async function() {
-        await initEvent();
+        let poolEvent = await initEvent();
 
         await poolEvent.addOutcome("outcome1", {from: eventOperator});
         try {
@@ -214,7 +208,7 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("should throw if a non owner publish the event", async function() {
-        await initEventWithOutcomes();
+        let poolEvent = await initEventWithOutcomes();
 
         try {
             await poolEvent.publish({from: player1});
@@ -226,11 +220,143 @@ contract('PoolEvent', function(accounts) {
     });
 
     it("verify that the owner published the event", async function() {
-        await initEventWithOutcomes();
+        let poolEvent = await initEventWithOutcomes();
 
         await poolEvent.publish({from: eventOperator});
         let eventStatus = await poolEvent.status.call();
         assert.equal(eventStatus, 1);
+    });
+
+    it("should throw if an already published event is published", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+
+        try {
+            await poolEvent.publish({from: eventOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("should throw if a canceled event is published", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await poolEvent.cancel({from: eventOperator});
+
+        try {
+            await poolEvent.publish({from: eventOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("verify that a paused event can be published", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await poolEvent.pause({from: eventOperator});
+        let eventStatus = await poolEvent.status.call();
+        assert.equal(eventStatus, 3);
+
+        await poolEvent.publish({from: eventOperator});
+        eventStatus = await poolEvent.status.call();
+        assert.equal(eventStatus, 1);
+    });
+
+    it("verify that the items buying end time can be changed when event is initializing", async function() {
+        let poolEvent = await initEvent();
+
+        await poolEvent.setItemBuyingEndTime(tommorowInSeconds - 1000, {from: eventOperator});
+        let itemBuyingEndTimeSeconds = await poolEvent.itemBuyingEndTimeSeconds.call();
+        assert.equal(itemBuyingEndTimeSeconds, tommorowInSeconds - 1000);
+    });
+
+    it("verify that the items buying end time can be changed when event is paused", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await poolEvent.pause({from: eventOperator});
+
+        await poolEvent.setItemBuyingEndTime(tommorowInSeconds - 1000, {from: eventOperator});
+        let itemBuyingEndTimeSeconds = await poolEvent.itemBuyingEndTimeSeconds.call();
+        assert.equal(itemBuyingEndTimeSeconds, tommorowInSeconds - 1000);
+    });
+
+    it("should throw if a non owner changes items buying end time", async function() {
+        let poolEvent = await initEvent();
+
+        try {
+            await poolEvent.setItemBuyingEndTime(tommorowInSeconds - 1000, {from: player1});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("verify that the event end time can be changed when event is initializing", async function() {
+        let poolEvent = await initEvent();
+
+        await poolEvent.setEventEndTime(tommorowInSeconds + 1000, {from: eventOperator});
+        let eventEndTimeSeconds = await poolEvent.eventEndTimeSeconds.call();
+        assert.equal(eventEndTimeSeconds, tommorowInSeconds + 1000);
+    });
+
+    it("verify that the event end time can be changed when event is paused", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await poolEvent.pause({from: eventOperator});
+
+        await poolEvent.setEventEndTime(tommorowInSeconds + 1000, {from: eventOperator});
+        let eventEndTimeSeconds = await poolEvent.eventEndTimeSeconds.call();
+        assert.equal(eventEndTimeSeconds, tommorowInSeconds + 1000);
+    });
+
+    it("should throw if a non owner changes event end time", async function() {
+        let poolEvent = await initEvent();
+
+        try {
+            await poolEvent.setEventEndTime(tommorowInSeconds + 1000, {from: player1});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("verify that the event name can be changed", async function() {
+        let poolEvent = await initEvent();
+
+        await poolEvent.setEventName("new name", {from: eventOperator});
+        let eventName = await poolEvent.name.call();
+        assert.equal(eventName, "new name");
+    });
+
+    it("should throw if a non owner changes event name", async function() {
+        let poolEvent = await initEvent();
+
+        try {
+            await poolEvent.setEventName("new name", {from: player1});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("verify that the oracle can be changed", async function() {
+        let poolEvent = await initEvent();
+        let newOracle;
+
+        await oracleFactory.createOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
+            newOracle = Oracle.at(getLogArg(result, "_oracle"));
+        });
+
+        await poolEvent.setOracle(newOracle.address, {from: eventOperator});
+        let oracleAddress = await poolEvent.oracleAddress.call();
+        assert.equal(oracleAddress, newOracle.address);
     });
 
     /*it("Create Oracle", async function() {
