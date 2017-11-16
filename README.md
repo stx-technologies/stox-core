@@ -2,7 +2,7 @@
 
 Stox is a blockchain prediction markets platform. To learn more about Stox please visit the Stox [website](https://www.stox.com/) and read the Stox [whitepaper] (https://www.stox.com/assets/pdf/stox-whitepaper.pdf)
 
-## Contacts Overview
+## Contracts Overview
 
 Our first smart contracts are being released with a Pool Event. A Pool Event distributes tokens between all winners according to their proportional investment in the winning outcome. The event winning outcome is decided by an oracle contract.
 
