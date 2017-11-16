@@ -2,6 +2,10 @@ pragma solidity ^0.4.18;
 import "./ERC20Token.sol";
 import "../Ownable.sol";
 
+/**
+    Stox Token implementation
+    Only used for testing purposes
+*/
 contract StoxTestToken is ERC20Token, Ownable {
     bool public transfersEnabled = true;    // true if transfer/transferFrom are enabled, false if not
 

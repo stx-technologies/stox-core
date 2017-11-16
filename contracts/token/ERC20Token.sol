@@ -4,6 +4,7 @@ import "./IERC20Token.sol";
 
 /**
     ERC20 Standard Token implementation
+    Only used for testing purposes
 */
 contract ERC20Token is Utils, IERC20Token {
     string public standard = "Token 0.1";
