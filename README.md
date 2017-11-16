@@ -16,8 +16,11 @@ An event has 3 different outcomes:
 3. Outcome 3
  
 User A placed 100 tokens on Outcome 1
+
 User B placed 300 tokens on Outcome 1
+
 User C placed 100 tokens on Outcome 2
+
 User D placed 100 tokens on Outcome 3
  
 Total token pool: 600
@@ -27,9 +30,13 @@ For example, after the event ends, the oracle decides the winning outcome is Out
 Users can now withdraw the following token amount: from their predictions: 
  
 User A -> 150 tokens (100 / (100 + 300) * 600)
+
 User B -> 450 tokens (300 / (100 + 300) * 600)
+
 User C -> 0 tokens
+
 User D -> 0 tokens
+
 
 ### Pool Event Lifecycle
 
