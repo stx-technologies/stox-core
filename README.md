@@ -1,6 +1,6 @@
 # Stox Smart Contracts v0.1 (alpha)
 
-Stox is a blockchain prediction markets platform. To learn more about Stox please visit the Stox [website](https://www.stox.com/) and read the Stox [whitepaper] (https://www.stox.com/assets/pdf/stox-whitepaper.pdf)
+Stox is a blockchain prediction markets platform. To learn more about Stox please visit the Stox [website](https://www.stox.com/) and read the Stox whitepaper (https://www.stox.com/assets/pdf/stox-whitepaper.pdf/)
 
 ## Contracts Overview
 
