@@ -27,6 +27,14 @@ function getLogArg(result, arg, logIndex = 0) {
     return result.logs[logIndex].args[arg];
 }
 
+function verifyItem(item, id, outcomeId, tokens, isWithdrawn, ownerAddress) {
+    assert.equal(item[0], id);
+    assert.equal(item[1], outcomeId);
+    assert.equal(item[2], tokens);
+    assert.equal(item[3], isWithdrawn);
+    assert.equal(item[4], ownerAddress);
+}
+
 contract('PoolEvent', function(accounts) {
 
     let factoryOperator = accounts[0];
@@ -37,6 +45,7 @@ contract('PoolEvent', function(accounts) {
     let player3         = accounts[5];
 
     let tommorowInSeconds;
+    let nowInSeconds;
 
     async function initOracle() {
         //oracle = await oracleFactory.createOracle("Test Oracle", {from: oracleOperator});
@@ -64,13 +73,31 @@ contract('PoolEvent', function(accounts) {
         return poolEvent;
     }
 
-    async function initPlayers() {
-        let newPoolEvent;
-        await eventFactory.createPoolEvent(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Event", {from: eventOperator}).then(function(result) {
-            newPoolEvent = PoolEvent.at(getLogArg(result, "_newEvent"));
-        });
+    async function initPlayers(eventAddress) {
+        // Clear existing players tokens
+        let player1Tokens = await stoxTestToken.balanceOf.call(player1);
+        let player2Tokens = await stoxTestToken.balanceOf.call(player2);
+        let player3Tokens = await stoxTestToken.balanceOf.call(player3);
 
-        return newPoolEvent;
+        await stoxTestToken.destroy(player1, player1Tokens);
+        await stoxTestToken.destroy(player2, player2Tokens);
+        await stoxTestToken.destroy(player3, player3Tokens);
+
+        // Issue new tokens
+        await stoxTestToken.issue(player1, 1000);
+        await stoxTestToken.issue(player2, 2000);
+        await stoxTestToken.issue(player3, 3000);
+
+        // Allow event to use tokens so players can buy items
+        await stoxTestToken.approve(eventAddress, 0, {from: player1});
+        await stoxTestToken.approve(eventAddress, 0, {from: player2});
+        await stoxTestToken.approve(eventAddress, 0, {from: player3});
+        
+        await stoxTestToken.approve(eventAddress, 1000, {from: player1});
+        await stoxTestToken.approve(eventAddress, 2000, {from: player2});
+        await stoxTestToken.approve(eventAddress, 3000, {from: player3});
+
+        let apporovedTokens = await stoxTestToken.allowance.call(player1, eventAddress);
     }
 
     before(async function() {
@@ -86,6 +113,7 @@ contract('PoolEvent', function(accounts) {
         var tomorrow = new Date();
         tomorrow.setDate((new Date).getDate() + 1);
         tommorowInSeconds = Math.round(tomorrow.getTime() / 1000);
+        nowInSeconds = Math.round((new Date()).getTime() / 1000);
 
         await initOracle();
       });
@@ -284,6 +312,19 @@ contract('PoolEvent', function(accounts) {
         assert.equal(itemBuyingEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
+    it("should throw if items buying end time is changed when event is published", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+
+        try {
+            await poolEvent.setItemBuyingEndTime(tommorowInSeconds - 1000, {from: eventOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
     it("should throw if a non owner changes items buying end time", async function() {
         let poolEvent = await initEvent();
 
@@ -359,119 +400,257 @@ contract('PoolEvent', function(accounts) {
         assert.equal(oracleAddress, newOracle.address);
     });
 
-    /*it("Create Oracle", async function() {
-        await initEvent();
-        return OracleFactory.deployed().then(function(instance) {
-            oracleFactory = instance;
-            return oracleFactory.createOracle("Cool Oracle");
-        }).then(function(result) {
-            for (var i = 0; i < result.logs.length; i++) {
-                var log = result.logs[i];
-        
-                if (log.event == "OracleCreated") {
-                  foundCreateOracle = true;
-                  break;
-                }
-              }
+    it("verify that a user can buy an item", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await initPlayers(poolEvent.address);
 
-            assert(foundCreateOracle, "We didn't find the created oracle");
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        let item = await poolEvent.items.call(0);
+        verifyItem(item, 1, 1, 1000, false, player1);
 
-            oracle = Oracle.at(result.logs[0].args["oracle"]);
-            return oracle.getOracleName.call();
-        }).then(function(name) {
-            assert.equal(name, "Cool Oracle", "function returned " + name);
-        });
-      });
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
 
-      it("Create PoolEvent with oracle", function() {
-        return EventFactory.deployed().then(function(instance) {
-            eventFactory = instance;
-            return eventFactory.createPoolEvent(oracle.address, 0, 0, "Cool Event");
-        }).then(function(result) {
-            for (var i = 0; i < result.logs.length; i++) {
-                var log = result.logs[i];
-        
-                if (log.event == "PoolEventCreated") {
-                  foundCreateEvent = true;
-                  break;
-                }
-              }
-
-            assert(foundCreateEvent, "We didn't find the created event");
-
-            poolEvent = PoolEvent.at(result.logs[0].args["newEvent"]);
-            return poolEvent.getEventName.call();
-        }).then(function(name) {
-            assert.equal(name, "Cool Event", "function returned " + name);
-        });
-      });*/
-
-      /*it("Add outcome 1 - \"Barcelona\"", function() {
-            return event.getEventName.call();
-        }).then(function(name) {
-            assert.equal(name, "Cool Event", "function returned " + name);
-      });*/
-
-      /*it("Add outcome 1 - \"Barcelona\"", function() {
-        return Event.deployed().then(function(instance) {
-            eventFactory = instance;
-            return eventFactory.createEvent(oracle.address, 0, 0, "Cool Event");
-        }).then(function(result) {
-            for (var i = 0; i < result.logs.length; i++) {
-                var log = result.logs[i];
-        
-                if (log.event == "OnEventCreated") {
-                  foundCreateEvent = true;
-                  break;
-                }
-              }
-
-            assert(foundCreateEvent, "We didn't find the created event");
-
-            event = Event.at(result.logs[0].args["newEvent"]);
-            return event.getEventName.call();
-        }).then(function(name) {
-            assert.equal(name, "Cool Event", "function returned " + name);
-        });
-      });
-
-      it("Add outcome 1 - \"Barcelona\"", function() {
-        return event.addOutcome("Barcelona").then(function(result) {
-            return event.getOutcome.call(1);
-        }).then(function(name) {
-        return event.addOutcome("Barcelona").then(function(result) {
-            return event.getOutcome.call(1);
-        }).then(function(name) {
-            assert.equal(name, "Barcelona", "function returned " + name);
-        });
-      });
-
-    /*it("Add outcome to event",  function() {
-        return OracleFactory.deployed().then(funtion(instance) {
-            oracleFactory = instance;
-            return oracleFactory.createOracle.call("aa");
-        
-        }).then(function(outCoinBalance) {
-        }
-        let oracleFactory = OracleFactory.deployed();
-        oracle = oracleFactory.createOracle("aa");
-
-        assert.equal("aa", oracle.mData);
-    });*/
-
-    /*before(function() {
-        let timeOnSeconds = Math.floor(Date.now() / 1000);
-        
-        // create oracle
-        oracle = await Oracle.new(null);
-        
-        // create event
-        event = await Event.new(oracle.address, timeOnSeconds + 60000, timeOnSeconds + 60000, null);
-        
+        assert.equal(tokenPool, 1000);
+        assert.equal(eventTokens, 1000);
     });
 
-    it("Add outcome to event",  function() {
-        assert.equal(event.addOutcome(null), 1)
-        assert.equal(event.addOutcome(null), 2)
-      });*/
+    it("verify that multiple users can buy items", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await initPlayers(poolEvent.address);
+
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        let item;
+        item = await poolEvent.items.call(0);
+        verifyItem(item, 1, 1, 1000, false, player1);
+        item = await poolEvent.items.call(1);
+        verifyItem(item, 2, 2, 2000, false, player2);
+        item = await poolEvent.items.call(2);
+        verifyItem(item, 3, 1, 3000, false, player3);
+
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(tokenPool, 6000);
+        assert.equal(eventTokens, 6000);
+    });
+
+    it("should throw if trying to resolve an event before oracle has been set", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+
+        try {
+            await poolEvent.resolve({from: eventOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("should throw if trying to resolve an event before items buying time has ended", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        try {
+            await poolEvent.resolve({from: eventOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("verify that an event can be resolved", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        await poolEvent.resolve({from: eventOperator});
+
+        eventStatus = await poolEvent.status.call();
+        assert.equal(eventStatus, 2);
+
+        let winnigOutcome = await poolEvent.winningOutcomeId.call();
+        assert.equal(winnigOutcome, 1);
+
+        let player1Winnings = await poolEvent.calculateUserItemsWithdrawValue(player1);
+        let player2Winnings = await poolEvent.calculateUserItemsWithdrawValue(player2);
+        let player3Winnings = await poolEvent.calculateUserItemsWithdrawValue(player3);
+
+        assert.equal(player1Winnings, 1500);
+        assert.equal(player2Winnings, 0);
+        assert.equal(player3Winnings, 4500);
+    });
+
+    it("verify that a user can withdraw funds from an item", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        await poolEvent.resolve({from: eventOperator});
+
+        await poolEvent.withdrawItems({from: player1});
+
+        let player1Tokens = await stoxTestToken.balanceOf(player1);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1500);
+        assert.equal(eventTokens, 4500);
+    });
+
+    it("verify that the operator can pay all users after the event is resolved", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        await poolEvent.resolve({from: eventOperator});
+
+        await poolEvent.payAllItems({from: eventOperator});
+
+        let player1Tokens = await stoxTestToken.balanceOf(player1);
+        let player3Tokens = await stoxTestToken.balanceOf(player3);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1500);
+        assert.equal(player3Tokens, 4500);
+        assert.equal(eventTokens, 0);
+    });
+
+    it("verify that the event can be canceled", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await poolEvent.cancel({from: eventOperator});
+        
+        eventStatus = await poolEvent.status.call();
+        assert.equal(eventStatus, 4);
+    });
+
+    it("verify that a operator can refund a user after the event is canceled", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.cancel({from: eventOperator});
+        await poolEvent.refundUser(player1, {from: eventOperator});
+
+        let player1Tokens = await stoxTestToken.balanceOf(player1);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1000);
+        assert.equal(tokenPool, 5000);
+        assert.equal(eventTokens, 5000);
+    });
+
+    it("verify that a user can get a refund after the event is canceled", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.cancel({from: eventOperator});
+        await poolEvent.getRefund({from: player1});
+
+        let player1Tokens = await stoxTestToken.balanceOf(player1);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1000);
+        assert.equal(tokenPool, 5000);
+        assert.equal(eventTokens, 5000);
+    });
+
+    it("verify that a operator can refund all users after the event is canceled", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(3000, 1, {from: player3});
+
+        await poolEvent.cancel({from: eventOperator});
+        await poolEvent.refundAllUsers({from: eventOperator});
+
+        let player1Tokens = await stoxTestToken.balanceOf(player1);
+        let player2Tokens = await stoxTestToken.balanceOf(player2);
+        let player3Tokens = await stoxTestToken.balanceOf(player3);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1000);
+        assert.equal(player2Tokens, 2000);
+        assert.equal(player3Tokens, 3000);
+        assert.equal(tokenPool, 0);
+        assert.equal(eventTokens, 0);
+    });
+
+    it("verify that an event can be paused", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        await poolEvent.pause({from: eventOperator});
+        
+        eventStatus = await poolEvent.status.call();
+        assert.equal(eventStatus, 3);
+    });
 });

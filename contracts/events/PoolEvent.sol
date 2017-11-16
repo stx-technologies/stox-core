@@ -105,7 +105,7 @@ contract PoolEvent is Ownable, Utils {
 
     // Note: operator should close the items sale in his website some time before the actual itemBuyingEndTimeSeconds as the ethereum network  
     // may take several minutes to process transactions
-    uint        public itemBuyingEndTimeSeconds; // After this time passes, users can no longer buy items
+    uint        public itemBuyingEndTimeSeconds;   // After this time passes, users can no longer buy items
 
     uint        public eventEndTimeSeconds;        // After this time passes and the event is resolved, users can withdraw their winning items
     uint        public tokenPool;                  // Total tokens used to buy items in this event
