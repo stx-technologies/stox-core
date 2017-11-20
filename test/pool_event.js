@@ -540,6 +540,73 @@ contract('PoolEvent', function(accounts) {
         assert.equal(eventTokens, 4500);
     });
 
+    it("verify that a user can withdraw funds from multiple items", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(2000, 1, {from: player3});
+        await poolEvent.buyItem(1000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        await poolEvent.resolve({from: eventOperator});
+
+        await poolEvent.withdrawItems({from: player3});
+
+        let player3Tokens = await stoxTestToken.balanceOf(player3);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player3Tokens, 4500);
+        assert.equal(eventTokens, 1500);
+    });
+
+    it("verify that a user can withdraw funds from multiple items in bulks", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(2000, 1, {from: player3});
+        await poolEvent.buyItem(1000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        await poolEvent.resolve({from: eventOperator});
+
+        // Withdraw 1st item
+        await poolEvent.withdrawItemsBulk(0,1, {from: player3});
+
+        let player3Tokens = await stoxTestToken.balanceOf(player3);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player3Tokens, 3000);
+        assert.equal(eventTokens, 3000);
+
+        // Withdraw 2nd item
+        await poolEvent.withdrawItemsBulk(1,1, {from: player3});
+
+        player3Tokens = await stoxTestToken.balanceOf(player3);
+        tokenPool = await poolEvent.tokenPool.call();
+        eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player3Tokens, 4500);
+        assert.equal(eventTokens, 1500);
+    });
+
     it("verify that the operator can pay all users after the event is resolved", async function() {
         let poolEvent = await initEventWithOutcomes();
         await poolEvent.publish({from: eventOperator});
@@ -569,6 +636,47 @@ contract('PoolEvent', function(accounts) {
         assert.equal(eventTokens, 0);
     });
 
+    it("verify that the operator can pay all users in bulks after the event is resolved", async function() {
+        let poolEvent = await initEventWithOutcomes();
+        await poolEvent.publish({from: eventOperator});
+        
+        await initPlayers(poolEvent.address);
+        await poolEvent.buyItem(1000, 1, {from: player1});
+        await poolEvent.buyItem(2000, 2, {from: player2});
+        await poolEvent.buyItem(2000, 1, {from: player3});
+        await poolEvent.buyItem(1000, 1, {from: player3});
+
+        await poolEvent.pause({from: eventOperator});
+        await poolEvent.setItemBuyingEndTime(nowInSeconds - 1000, {from: eventOperator});
+        await poolEvent.publish({from: eventOperator});
+        await oracle.registerEvent(poolEvent.address, {from: oracleOperator});
+        await oracle.setOutcome(poolEvent.address, 1, {from: oracleOperator});
+
+        await poolEvent.resolve({from: eventOperator});
+
+        await poolEvent.payAllItemsBulk(0, 3, {from: eventOperator});
+
+        let player1Tokens = await stoxTestToken.balanceOf(player1);
+        let player3Tokens = await stoxTestToken.balanceOf(player3);
+        let tokenPool = await poolEvent.tokenPool.call();
+        let eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1500);
+        assert.equal(player3Tokens, 3000);
+        assert.equal(eventTokens, 1500);
+
+        await poolEvent.payAllItemsBulk(3, 1, {from: eventOperator});
+
+        player1Tokens = await stoxTestToken.balanceOf(player1);
+        player3Tokens = await stoxTestToken.balanceOf(player3);
+        tokenPool = await poolEvent.tokenPool.call();
+        eventTokens = await stoxTestToken.balanceOf.call(poolEvent.address);
+
+        assert.equal(player1Tokens, 1500);
+        assert.equal(player3Tokens, 4500);
+        assert.equal(eventTokens, 0);
+    });
+
     it("verify that the event can be canceled", async function() {
         let poolEvent = await initEventWithOutcomes();
         await poolEvent.publish({from: eventOperator});
@@ -588,7 +696,7 @@ contract('PoolEvent', function(accounts) {
         await poolEvent.buyItem(3000, 1, {from: player3});
 
         await poolEvent.cancel({from: eventOperator});
-        await poolEvent.refundUser(player1, {from: eventOperator});
+        await poolEvent.refundUser(player1, 1, {from: eventOperator});
 
         let player1Tokens = await stoxTestToken.balanceOf(player1);
         let tokenPool = await poolEvent.tokenPool.call();
@@ -609,7 +717,7 @@ contract('PoolEvent', function(accounts) {
         await poolEvent.buyItem(3000, 1, {from: player3});
 
         await poolEvent.cancel({from: eventOperator});
-        await poolEvent.getRefund({from: player1});
+        await poolEvent.getRefund(1, {from: player1});
 
         let player1Tokens = await stoxTestToken.balanceOf(player1);
         let tokenPool = await poolEvent.tokenPool.call();

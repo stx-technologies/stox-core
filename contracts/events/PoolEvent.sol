@@ -33,6 +33,14 @@ import "../token/IERC20Token.sol";
 contract PoolEvent is Ownable, Utils {
 
     /*
+    *   Constants
+    */
+    uint private constant MAX_ITEMS_WITHDRAWN   = 50;
+    uint private constant MAX_ITEMS_PAID        = 100;
+    uint private constant MAX_ITEMS_REFUND      = 50;
+
+
+    /*
      *  Events
      */
     event EventPublished();
@@ -41,9 +49,9 @@ contract PoolEvent is Ownable, Utils {
     event EventResolved(address indexed _oracle, uint indexed _winningOutcomeId);
     event ItemBought(address indexed _owner, uint indexed _outcomeId, uint indexed _itemId, uint _tokenAmount);
     event ItemsWithdrawn(address indexed _owner, uint _tokenAmount);
-    event AllItemsPaid();
-    event UserRefunded(address indexed _owner, uint _tokenAmount);
-    event AllUsersRefunded();
+    event ItemsPaid(uint _itemIdStart, uint _itemIdEnd);
+    event UserRefunded(address indexed _owner, uint _outcomeId, uint _tokenAmount);
+    event ItemsRefunded(uint _itemIdStart, uint _itemIdEnd);
     event ItemBuyingEndTimeChanged(uint _newTime);
     event EventEndTimeChanged(uint _newTime);
     event EventNameChanged(string _newName);
@@ -247,8 +255,7 @@ contract PoolEvent is Ownable, Utils {
             outcomeValid(_outcomeId) {
         
         require(
-            (stox.allowance(_owner, this) >= _tokenAmount) &&
-            (itemBuyingEndTimeSeconds > now));
+            itemBuyingEndTimeSeconds > now);
 
         tokenPool = safeAdd(tokenPool, _tokenAmount);
         outcomes[_outcomeId - 1].tokens = safeAdd(outcomes[_outcomeId - 1].tokens, _tokenAmount);
@@ -257,7 +264,7 @@ contract PoolEvent is Ownable, Utils {
         items.push(Item(itemId, _outcomeId, _tokenAmount, false, _owner));
         ownerItems[_owner][_outcomeId].push(itemId);
 
-        stox.transferFrom(_owner, this, _tokenAmount);
+        assert(stox.transferFrom(_owner, this, _tokenAmount));
 
         ItemBought(_owner, _outcomeId, itemId, _tokenAmount);
     }
@@ -299,14 +306,30 @@ contract PoolEvent is Ownable, Utils {
         Alternatively the event owner / operator can choose to pay all the users himself using the payAllItems() function
     */
     function withdrawItems() public statusIs(Status.Resolved) {
+        withdrawItemsBulk(0, MAX_ITEMS_WITHDRAWN);
+    }
+
+    /*
+        @dev After the event is resolved the user can withdraw tokens from his winning items
+        Alternatively the event owner / operator can choose to pay all the users himself using the payAllItems() function
+
+        @param _indexStart From which item index should we start withdrawing
+        @param _maxItems   How many items should we withdraw
+    */
+    function withdrawItemsBulk(uint _indexStart, uint _maxItems) public statusIs(Status.Resolved) greaterThanZero(_maxItems) {
         require(
             (hasItems(msg.sender, winningOutcomeId) &&
-            (!areItemsWithdrawn(msg.sender, winningOutcomeId))));
+            (!areItemsWithdrawn(msg.sender, winningOutcomeId, _indexStart, _maxItems))));
 
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
         uint userWinTokens = 0;
 
-        for (uint i = 0; i < ownerItems[msg.sender][winningOutcomeId].length; i++) {
+        uint indexEnd = safeAdd(_indexStart, _maxItems);
+        if (indexEnd > ownerItems[msg.sender][winningOutcomeId].length) {
+            indexEnd = ownerItems[msg.sender][winningOutcomeId].length;
+        }
+
+        for (uint i = _indexStart; i < indexEnd; i++) {
             Item storage item = items[ownerItems[msg.sender][winningOutcomeId][i] - 1];
             userWinTokens = safeAdd(userWinTokens, (safeMul(item.tokens, tokenPool) / winningOutcomeTokens));
             item.isWithdrawn = true;
@@ -324,10 +347,25 @@ contract PoolEvent is Ownable, Utils {
         Alternatively the event owner / operator can choose that the users will need to withdraw the funds using the withdrawItems() function
     */    
     function payAllItems() public ownerOnly statusIs(Status.Resolved) {
+        payAllItemsBulk(0, MAX_ITEMS_PAID);
+    }
 
+    /*
+        @dev After the event is resolved the event owner can pay tokens for all the winning items
+        Alternatively the event owner / operator can choose that the users will need to withdraw the funds using the withdrawItems() function
+
+        @param _indexStart From which item index should we start paying
+        @param _maxItems   How many items should we pay
+    */    
+    function payAllItemsBulk(uint _indexStart, uint _maxItems) public ownerOnly statusIs(Status.Resolved) greaterThanZero(_maxItems) {
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
 
-        for (uint i = 0; i < items.length; i++) {
+        uint indexEnd = safeAdd(_indexStart, _maxItems);
+        if (indexEnd > items.length) {
+            indexEnd = items.length;
+        }
+
+        for (uint i = _indexStart; i < indexEnd; i++) {
             Item storage item = items[i];
             if ((item.id != 0) && (item.outcomeId == winningOutcomeId) && !item.isWithdrawn) {
                 item.isWithdrawn = true;
@@ -336,7 +374,7 @@ contract PoolEvent is Ownable, Utils {
             }
         }
 
-        AllItemsPaid();
+        ItemsPaid(safeAdd(_indexStart, 1), indexEnd);
     }
 
     /*
@@ -394,47 +432,80 @@ contract PoolEvent is Ownable, Utils {
         @dev Allow to event owner / operator to cancel the user's items and refund the tokens.
 
         @param _owner Items owner
+        @param _outcomeId   Outcome to refund
     */
-    function refundUser(address _owner) public ownerOnly {
+    function refundUser(address _owner, uint _outcomeId) public ownerOnly {
         require (status != Status.Resolved);
         
-        performRefund(_owner);
+        performRefundBulk(_owner, _outcomeId, 0, MAX_ITEMS_REFUND);
+        
+    }
+
+    /*
+        @dev Allow to event owner / operator to cancel the user's items and refund the tokens.
+
+        @param _owner Items owner
+        @param _outcomeId   Outcome to refund
+        @param _indexStart  From which item index should we refund
+        @param _maxItems    How many items should we refund
+    */
+    function refundUserBulk(address _owner, uint _outcomeId, uint _indexStart, uint _maxItems) public ownerOnly {
+        require (status != Status.Resolved);
+        
+        performRefundBulk(_owner, _outcomeId, _indexStart, _maxItems);
     }
 
     /*
         @dev Allow the user to cancel his items and refund the tokens he invested in items. 
         Can be called only after the event is canceled.
+
+        @param _outcomeId   Outcome to refund
     */
-    function getRefund() public statusIs(Status.Canceled) {
-        performRefund(msg.sender);
+    function getRefund(uint _outcomeId) public statusIs(Status.Canceled) {
+        performRefundBulk(msg.sender, _outcomeId, 0, MAX_ITEMS_REFUND);
+    }
+
+    /*
+        @dev Allow the user to cancel his items and refund the tokens he invested in items. 
+        Can be called only after the event is canceled.
+
+        @param _outcomeId   Outcome to refund
+        @param _indexStart  From which item index should we refund
+        @param _maxItems    How many items should we refund
+    */
+    function getRefundBulk(uint _outcomeId, uint _indexStart, uint _maxItems) public statusIs(Status.Canceled) {
+        performRefundBulk(msg.sender, _outcomeId, _indexStart, _maxItems);
     }
 
     /*
         @dev Refund a specific user's items tokens and cancel the user's items.
 
-        @param _owner Items owner
+        @param _owner       Items owner
+        @param _outcomeId   Outcome to refund
+        @param _indexStart  From which item index should we refund
+        @param _maxItems    How many items should we refund
     */
-    function performRefund(address _owner) private {
-        require(tokenPool > 0);
+    function performRefundBulk(address _owner, uint _outcomeId, uint _indexStart, uint _maxItems) private greaterThanZero(_maxItems) {
+        require((tokenPool > 0) &&
+                hasItems(_owner, _outcomeId));
+
+        uint indexEnd = safeAdd(_indexStart, _maxItems);
+        if (indexEnd > ownerItems[_owner][_outcomeId].length) {
+            indexEnd = ownerItems[_owner][_outcomeId].length;
+        }
         
         uint refundAmount = 0;
 
-        for (uint outcomeId = 1; outcomeId <= outcomes.length; outcomeId++) {
-            for (uint itemPos = 0; itemPos < ownerItems[_owner][outcomeId].length; itemPos++) {
-                uint itemId = ownerItems[_owner][outcomeId][itemPos];
+        for (uint itemPos = _indexStart; itemPos < indexEnd; itemPos++) {
+            uint itemId = ownerItems[_owner][_outcomeId][itemPos];
+            
+            if (items[itemId - 1].tokens > 0) {
+                outcomes[_outcomeId - 1].tokens = safeSub(outcomes[_outcomeId - 1].tokens, items[itemId - 1].tokens);
+                refundAmount = safeAdd(refundAmount, items[itemId - 1].tokens);
 
-                if (items[itemId - 1].tokens > 0) {
-                    outcomes[outcomeId - 1].tokens = safeSub(outcomes[outcomeId - 1].tokens, items[itemId - 1].tokens);
-                    refundAmount = safeAdd(refundAmount, items[itemId - 1].tokens);
-
-                    // After the token amount to refund is calculated - delete the user's tokens
-                    delete ownerItems[_owner][outcomeId][itemPos];
-                    delete items[itemId - 1];
-                }
-            }
-
-            if (ownerItems[_owner][outcomeId].length > 0) {
-                ownerItems[_owner][outcomeId].length = 0;
+                // After the token amount to refund is calculated - delete the user's tokens
+                delete ownerItems[_owner][_outcomeId][itemPos];
+                delete items[itemId - 1];
             }
         }
 
@@ -443,16 +514,31 @@ contract PoolEvent is Ownable, Utils {
             stox.transfer(_owner, refundAmount); // Refund the user
         }
 
-        UserRefunded(_owner, refundAmount);
+        UserRefunded(_owner, _outcomeId, refundAmount);
     }
 
     /*
         @dev Allow to event owner / operator to cancel all the users items and refund their tokens.
     */
     function refundAllUsers() public ownerOnly statusIs(Status.Canceled) {
+        refundItemsBulk(0, MAX_ITEMS_REFUND);
+    }
+
+    /*
+        @dev Allow to event owner / operator to cancel the users items and refund their tokens.
+
+        @param _indexStart From which item index should we start refunding
+        @param _maxItems   How many items should refund
+    */
+    function refundItemsBulk(uint _indexStart, uint _maxItems) public ownerOnly statusIs(Status.Canceled) greaterThanZero(_maxItems) {
         require(tokenPool > 0);
 
-        for (uint i = 0; i < items.length; i++) {
+        uint indexEnd = safeAdd(_indexStart, _maxItems);
+        if (indexEnd > items.length) {
+            indexEnd = items.length;
+        }
+
+        for (uint i = _indexStart; i < indexEnd; i++) {
             Item storage item = items[i];
             if (item.id != 0) {
                 uint refundTokens = item.tokens;
@@ -465,7 +551,7 @@ contract PoolEvent is Ownable, Utils {
 
         tokenPool = 0;
         
-        AllUsersRefunded();
+        ItemsRefunded(safeAdd(_indexStart, 1), indexEnd);
     }
 
     /*
@@ -510,9 +596,13 @@ contract PoolEvent is Ownable, Utils {
 
         @return             true if the user's items  on an outcome are all withdrawn
     */
-    function areItemsWithdrawn(address _owner, uint _outcomeId) private view returns(bool) {
+    function areItemsWithdrawn(address _owner, uint _outcomeId, uint _indexStart, uint _maxItems) private view greaterThanZero(_maxItems) returns(bool) {
+        uint indexEnd = safeAdd(_indexStart, _maxItems);
+        if (indexEnd > ownerItems[_owner][_outcomeId].length) {
+            indexEnd = ownerItems[_owner][_outcomeId].length;
+        }
 
-        for (uint i = 0; i < ownerItems[_owner][_outcomeId].length; i++) {
+        for (uint i = _indexStart; i <= indexEnd; i++) {
             if (!items[ownerItems[_owner][_outcomeId][i] - 1].isWithdrawn) {
                 return false;
             }
