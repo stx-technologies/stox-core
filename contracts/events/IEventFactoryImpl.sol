@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
 /*
-    @title IEventFactoryImpl contract - A interface contract for the events factory.
+    @title IPredictionFactoryImpl contract - A interface contract for the predictions factory.
  */
-contract IEventFactoryImpl {
-    function createPoolEvent(address _owner, address _oracle, uint _eventEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public returns(address); 
+contract IPredictionFactoryImpl {
+    function createPoolPrediction(address _owner, address _oracle, uint _predictionEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public returns(address); 
 }

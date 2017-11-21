@@ -4,16 +4,16 @@ import "../Utils.sol";
 
 /*
     @title Oracle contract - Basic oracle implementation.
-    The oracle can register events and set their outcomes.
+    The oracle can register predictions and set their outcomes.
  */
 contract Oracle is Ownable, Utils {
 
     /*
      *  Events
      */
-    event OutcomeAssigned(address indexed _eventAddress, uint indexed _outcomeId);
-    event EventRegistered(address indexed _eventAddress);
-    event EventUnregistered(address indexed _eventAddress);
+    event OutcomeAssigned(address indexed _predictionAddress, uint indexed _outcomeId);
+    event PredictionRegistered(address indexed _predictionAddress);
+    event PredictionUnregistered(address indexed _predictionAddress);
     event OracleNameChanged(string _newName);
 
     /*
@@ -21,8 +21,8 @@ contract Oracle is Ownable, Utils {
      */
     string                      public version = "0.1";
     string                      public name;
-    mapping(address=>bool)      public eventsRegistered;    // An index of all the events registered for this oracle
-    mapping(address=>uint)      public eventsOutcome;       // Mapping of event -> outcomes
+    mapping(address=>bool)      public predictionsRegistered;    // An index of all the predictions registered for this oracle
+    mapping(address=>uint)      public predictionsOutcome;       // Mapping of prediction -> outcomes
 
     /*
         @dev constructor
@@ -35,62 +35,62 @@ contract Oracle is Ownable, Utils {
     }
 
     /*
-        @dev Allow the oracle owner to register an event
+        @dev Allow the oracle owner to register an prediction
 
-        @param _event Event address to register
+        @param _prediction Prediction address to register
     */
-    function registerEvent(address _event) public validAddress(_event) ownerOnly {
-        eventsRegistered[_event] = true;
+    function registerPrediction(address _prediction) public validAddress(_prediction) ownerOnly {
+        predictionsRegistered[_prediction] = true;
 
-        EventRegistered(_event);
+        PredictionRegistered(_prediction);
     }
 
     /*
-        @dev Allow the oracle owner to unregister an event
+        @dev Allow the oracle owner to unregister an prediction
 
-        @param _event Event address to unregister
+        @param _prediction Prediction address to unregister
     */
-    function unRegisterEvent(address _event) public validAddress(_event) ownerOnly {
-        delete eventsRegistered[_event];
+    function unRegisterPrediction(address _prediction) public validAddress(_prediction) ownerOnly {
+        delete predictionsRegistered[_prediction];
 
-        EventUnregistered(_event);
+        PredictionUnregistered(_prediction);
     }
 
-    function isEventRegistered(address _event) private view returns (bool) {
-        return (eventsRegistered[_event]);
+    function isPredictionRegistered(address _prediction) private view returns (bool) {
+        return (predictionsRegistered[_prediction]);
     }
 
     /*
-        @dev Allow the oracle owner to set a specific outcome for an event
-        The event should be registered before calling set outcome.
-        Note that setting the outcome does not directly affect the event contract. The event contract still needs to call the resolve()
+        @dev Allow the oracle owner to set a specific outcome for an prediction
+        The prediction should be registered before calling set outcome.
+        Note that setting the outcome does not directly affect the prediction contract. The prediction contract still needs to call the resolve()
         method in order to pull the outcome id from the oracle.
 
-        @param _event       Event address to set outcome for
+        @param _prediction  Prediction address to set outcome for
         @param _outcomeId   Winning outcome id
     */
-    function setOutcome (address _event, uint _outcomeId) 
+    function setOutcome (address _prediction, uint _outcomeId)
             public 
-            validAddress(_event)
+            validAddress(_prediction)
             greaterThanZero(_outcomeId)
             ownerOnly {
         
-        require(isEventRegistered(_event));
+        require(isPredictionRegistered(_prediction));
         
-        eventsOutcome[_event] = _outcomeId;
+        predictionsOutcome[_prediction] = _outcomeId;
         
-        OutcomeAssigned(_event, _outcomeId);
+        OutcomeAssigned(_prediction, _outcomeId);
     }
 
     /*
-        @dev Returns the outcome id for a specific event
+        @dev Returns the outcome id for a specific prediction
 
-        @param _event   Event address
+        @param _prediction  Prediction address
 
-        @return         Outcome id
+        @return             Outcome id
     */ 
-    function getOutcome(address _event) public view returns (uint) {
-        return eventsOutcome[_event];
+    function getOutcome(address _prediction) public view returns (uint) {
+        return predictionsOutcome[_prediction];
     }
 
     /*

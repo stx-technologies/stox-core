@@ -4,7 +4,7 @@ import "../Ownable.sol";
 
 /*
     @title OracleFactory contract - A factory contract for generating oracles.
-    It holds a factory interface object so we can update the oracle code without deploying a new oracle factory to the ethereum netowrk.
+    It holds a factory interface object so we can update the oracle code without deploying a new oracle factory to the ethereum network.
  */
 contract OracleFactory is Ownable {
     event OracleCreated(address indexed _creator, address _oracle);

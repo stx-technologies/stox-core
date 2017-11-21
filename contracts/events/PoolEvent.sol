@@ -5,12 +5,12 @@ import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
 
 /**
-    @title Pool event contract - Pool events distributes tokens between all winners according to 
-    their proportional investment in the winning outcome. The event winning outcome is decided by the oracle.
+    @title Pool prediction contract - Pool predictions distributes tokens between all winners according to
+    their proportional investment in the winning outcome. The prediction winning outcome is decided by the oracle.
 
-    An example of a pool event
+    An example of a pool prediction
     ---------------------------
-    An event has 3 different outcomes:
+    An prediction has 3 different outcomes:
     1. Outcome1
     2. Outcome2
     3. Outcome3
@@ -22,44 +22,44 @@ import "../token/IERC20Token.sol";
 
     Total token pool: 600
 
-    After the event ends, the oracle decides that the winning outcome is Outcome1
+    After the prediction ends, the oracle decides that the winning outcome is Outcome1
 
-    Users can now withdraw from their items the following token amount:
+    Users can now withdraw from their units the following token amount:
     User A -> 150 tokens (100 / (100 + 300) * 600)
     User B -> 450 tokens (300 / (100 + 300) * 600)
     User C -> 0 tokens
     User D -> 0 tokens
  */
-contract PoolEvent is Ownable, Utils {
+contract PoolPrediction is Ownable, Utils {
 
     /*
     *   Constants
     */
-    uint private constant MAX_ITEMS_WITHDRAWN   = 50;
-    uint private constant MAX_ITEMS_PAID        = 100;
-    uint private constant MAX_ITEMS_REFUND      = 50;
+    uint private constant MAX_UNITS_WITHDRAWN   = 50;
+    uint private constant MAX_UNITS_PAID        = 100;
+    uint private constant MAX_UNITS_REFUND      = 50;
 
 
     /*
      *  Events
      */
-    event EventPublished();
-    event EventPaused();
-    event EventCanceled();
-    event EventResolved(address indexed _oracle, uint indexed _winningOutcomeId);
-    event ItemBought(address indexed _owner, uint indexed _outcomeId, uint indexed _itemId, uint _tokenAmount);
-    event ItemsWithdrawn(address indexed _owner, uint _tokenAmount);
-    event ItemsPaid(uint _itemIdStart, uint _itemIdEnd);
+    event PredictionPublished();
+    event PredictionPaused();
+    event PredictionCanceled();
+    event PredictionResolved(address indexed _oracle, uint indexed _winningOutcomeId);
+    event UnitBought(address indexed _owner, uint indexed _outcomeId, uint indexed _unitId, uint _tokenAmount);
+    event UnitsWithdrawn(address indexed _owner, uint _tokenAmount);
+    event UnitsPaid(uint _unitIdStart, uint _unitIdEnd);
     event UserRefunded(address indexed _owner, uint _outcomeId, uint _tokenAmount);
-    event ItemsRefunded(uint _itemIdStart, uint _itemIdEnd);
-    event ItemBuyingEndTimeChanged(uint _newTime);
-    event EventEndTimeChanged(uint _newTime);
-    event EventNameChanged(string _newName);
+    event UnitsRefunded(uint _unitIdStart, uint _unitIdEnd);
+    event UnitBuyingEndTimeChanged(uint _newTime);
+    event PredictionEndTimeChanged(uint _newTime);
+    event PredictionNameChanged(string _newName);
     event OracleChanged(address _oracle);
     event OutcomeAdded(uint indexed _outcomeId, string _name);
 
     /**
-        @dev Check the currect contract status
+        @dev Check the curren contract status
 
         @param _status Status to check
     */
@@ -69,7 +69,7 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /**
-        @dev Check if the event has this outcome id
+        @dev Check if the prediction has this outcome id
 
         @param _outcomeId Outcome to check
     */
@@ -82,21 +82,21 @@ contract PoolEvent is Ownable, Utils {
      *  Enums and Structs
      */
     enum Status {
-        Initializing,       // The status when the event is first created. During this stage we define the event outcomes.
-        Published,          // The event is published and users can now buy items.
-        Resolved,           // The event is resolved and users can withdraw their items.
-        Paused,             // The event is paused and users can no longer buy items until the event is published again.
-        Canceled            // The event is canceled. Users can get their invested tokens refunded to them.
+        Initializing,       // The status when the prediction is first created. During this stage we define the prediction outcomes.
+        Published,          // The prediction is published and users can now buy units.
+        Resolved,           // The prediction is resolved and users can withdraw their units.
+        Paused,             // The prediction is paused and users can no longer buy units until the prediction is published again.
+        Canceled            // The prediction is canceled. Users can get their invested tokens refunded to them.
     }
 
     struct Outcome {
         uint    id;         // Id will start at 1, and increase by 1 for every new outcome
         string  name;           
-        uint    tokens;     // Total tokens used to buy items for this outcome
+        uint    tokens;     // Total tokens used to buy units for this outcome
     }
 
-    struct Item {
-        uint    id;         // Id will start at 1, and increase by 1 for every new item
+    struct Unit {
+        uint    id;         // Id will start at 1, and increase by 1 for every new unit
         uint    outcomeId;
         uint    tokens;
         bool    isWithdrawn;
@@ -111,57 +111,57 @@ contract PoolEvent is Ownable, Utils {
     IERC20Token public stox;                       // Stox ERC20 token
     Status      public status;
 
-    // Note: operator should close the items sale in his website some time before the actual itemBuyingEndTimeSeconds as the ethereum network  
+    // Note: operator should close the units sale in his website some time before the actual unitBuyingEndTimeSeconds as the ethereum network
     // may take several minutes to process transactions
-    uint        public itemBuyingEndTimeSeconds;   // After this time passes, users can no longer buy items
+    uint        public unitBuyingEndTimeSeconds;   // After this time passes, users can no longer buy units
 
-    uint        public eventEndTimeSeconds;        // After this time passes and the event is resolved, users can withdraw their winning items
-    uint        public tokenPool;                  // Total tokens used to buy items in this event
-    address     public oracleAddress;              // When the event is resolved the oracle will tell the event who is the winning outcome
+    uint        public predictionEndTimeSeconds;   // After this time passes and the prediction is resolved, users can withdraw their winning units
+    uint        public tokenPool;                  // Total tokens used to buy units in this prediction
+    address     public oracleAddress;              // When the prediction is resolved the oracle will tell the prediction who is the winning outcome
     uint        public winningOutcomeId;
     Outcome[]   public outcomes;
-    Item[]      public items;
+    Unit[]      public units;
 
-    // Mapping to see all the items bought for each user and outcome (user address -> outcome id -> item id[])
-    mapping(address => mapping(uint => uint[])) public ownerItems; 
+    // Mapping to see all the units bought for each user and outcome (user address -> outcome id -> unit id[])
+    mapping(address => mapping(uint => uint[])) public ownerUnits;
 
     /*
         @dev constructor
 
-        @param _owner                       Event owner / operator
-        @param _oracle                      The oracle provides the winning outcome for the event
-        @param _eventEndTimeSeconds         Event end time
-        @param _itemBuyingEndTimeSeconds  Item buying end time
-        @param _name                        Event name
+        @param _owner                       Prediction owner / operator
+        @param _oracle                      The oracle provides the winning outcome for the prediction
+        @param _predictionEndTimeSeconds    Prediction end time
+        @param _unitBuyingEndTimeSeconds    Unit buying end time
+        @param _name                        Prediction name
         @param _stox                        Stox ERC20 token address
     */
-    function PoolEvent(address _owner,
+    function PoolPrediction(address _owner,
             address _oracle,
-            uint _eventEndTimeSeconds,
-            uint _itemBuyingEndTimeSeconds,
+            uint _predictionEndTimeSeconds,
+            uint _unitBuyingEndTimeSeconds,
             string _name,
             IERC20Token _stox)
             public 
             validAddress(_oracle)
             validAddress(_owner)
             validAddress(_stox)
-            greaterThanZero(_eventEndTimeSeconds)
-            greaterThanZero(_itemBuyingEndTimeSeconds)
+            greaterThanZero(_predictionEndTimeSeconds)
+            greaterThanZero(_unitBuyingEndTimeSeconds)
             notEmpty(_name)
             Ownable(_owner) {
 
-        require (_eventEndTimeSeconds >= _itemBuyingEndTimeSeconds);
+        require (_predictionEndTimeSeconds >= _unitBuyingEndTimeSeconds);
 
         status = Status.Initializing;
         oracleAddress = _oracle;
-        eventEndTimeSeconds = _eventEndTimeSeconds;
-        itemBuyingEndTimeSeconds = _itemBuyingEndTimeSeconds;
+        predictionEndTimeSeconds = _predictionEndTimeSeconds;
+        unitBuyingEndTimeSeconds = _unitBuyingEndTimeSeconds;
         name = _name;
         stox = _stox;
     }
 
     /*
-        @dev Allow the event owner to change add a new outcome to the event
+        @dev Allow the prediction owner to change add a new outcome to the prediction
 
         @param _name Outcome name
     */
@@ -173,7 +173,7 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /*
-        @dev Allow the event owner to publish the event - Users can now buy item on the various outcomes.
+        @dev Allow the prediction owner to publish the prediction - Users can now buy unit on the various outcomes.
     */
     function publish() public ownerOnly {
         require ((outcomes.length > 1) && 
@@ -182,51 +182,51 @@ contract PoolEvent is Ownable, Utils {
 
         status = Status.Published;
 
-        EventPublished();
+        PredictionPublished();
     }
 
     /*
-        @dev Allow the event owner to change item buying end time when event is initializing or paused
+        @dev Allow the prediction owner to change unit buying end time when prediction is initializing or paused
 
-        @param _newItemBuyingEndTimeSeconds Item buying end time
+        @param _newUnitBuyingEndTimeSeconds Unit buying end time
     */
-    function setItemBuyingEndTime(uint _newItemBuyingEndTimeSeconds) greaterThanZero(_newItemBuyingEndTimeSeconds) external ownerOnly {
-         require ((eventEndTimeSeconds >= _newItemBuyingEndTimeSeconds) && 
+    function setUnitBuyingEndTime(uint _newUnitBuyingEndTimeSeconds) greaterThanZero(_newUnitBuyingEndTimeSeconds) external ownerOnly {
+         require ((predictionEndTimeSeconds >= _newUnitBuyingEndTimeSeconds) &&
             ((status == Status.Initializing) || 
                 (status == Status.Paused)));
 
-         itemBuyingEndTimeSeconds = _newItemBuyingEndTimeSeconds;
-         ItemBuyingEndTimeChanged(_newItemBuyingEndTimeSeconds);
+         unitBuyingEndTimeSeconds = _newUnitBuyingEndTimeSeconds;
+         UnitBuyingEndTimeChanged(_newUnitBuyingEndTimeSeconds);
     }
 
     /*
-        @dev Allow the event owner to change the event end time when event is initializing or paused
+        @dev Allow the prediction owner to change the prediction end time when prediction is initializing or paused
 
-        @param _newEventEndTimeSeconds Event end time
+        @param _newPredictionEndTimeSeconds Prediction end time
     */
-    function setEventEndTime(uint _newEventEndTimeSeconds) external ownerOnly {
-         require ((_newEventEndTimeSeconds >= itemBuyingEndTimeSeconds) && 
+    function setPredictionEndTime(uint _newPredictionEndTimeSeconds) external ownerOnly {
+         require ((_newPredictionEndTimeSeconds >= unitBuyingEndTimeSeconds) &&
             ((status == Status.Initializing) || 
                 (status == Status.Paused)));
 
-         eventEndTimeSeconds = _newEventEndTimeSeconds;
+         predictionEndTimeSeconds = _newPredictionEndTimeSeconds;
 
-         EventEndTimeChanged(_newEventEndTimeSeconds);
+         PredictionEndTimeChanged(_newPredictionEndTimeSeconds);
     }
 
     /*
-        @dev Allow the event owner to change the name
+        @dev Allow the prediction owner to change the name
 
-        @param _newName Event name
+        @param _newName Prediction name
     */
-    function setEventName(string _newName) notEmpty(_newName) external ownerOnly {
+    function setPredictionName(string _newName) notEmpty(_newName) external ownerOnly {
         name = _newName;
 
-        EventNameChanged(_newName);
+        PredictionNameChanged(_newName);
     }
 
     /*
-        @dev Allow the event owner to change the oracle address
+        @dev Allow the prediction owner to change the oracle address
 
         @param _oracle Oracle address
     */
@@ -239,15 +239,15 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /*
-        @dev Allow any user to buy an item on a specific outcome. note that users can buy multiple items on a specific outcome.
-        Before calling buyItem the user should first call the approve(thisEventAddress, tokenAmount) on the 
+        @dev Allow any user to buy an unit on a specific outcome. note that users can buy multiple units on a specific outcome.
+        Before calling buyUnit the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
-        @param _owner       The item owner
-        @param _tokenAmount The amount of tokens invested in this item
+        @param _owner       The unit owner
+        @param _tokenAmount The amount of tokens invested in this unit
         @param _outcomeId   The outcome the user predicts.
     */
-    function buyItem(address _owner, uint _tokenAmount, uint _outcomeId) 
+    function buyUnitFor(address _owner, uint _tokenAmount, uint _outcomeId)
             public
             statusIs(Status.Published)
             validAddress(_owner)
@@ -255,171 +255,171 @@ contract PoolEvent is Ownable, Utils {
             outcomeValid(_outcomeId) {
         
         require(
-            itemBuyingEndTimeSeconds > now);
+            unitBuyingEndTimeSeconds > now);
 
         tokenPool = safeAdd(tokenPool, _tokenAmount);
         outcomes[_outcomeId - 1].tokens = safeAdd(outcomes[_outcomeId - 1].tokens, _tokenAmount);
 
-        uint itemId = safeAdd(items.length, 1);
-        items.push(Item(itemId, _outcomeId, _tokenAmount, false, _owner));
-        ownerItems[_owner][_outcomeId].push(itemId);
+        uint unitId = safeAdd(units.length, 1);
+        units.push(Unit(unitId, _outcomeId, _tokenAmount, false, _owner));
+        ownerUnits[_owner][_outcomeId].push(unitId);
 
         assert(stox.transferFrom(_owner, this, _tokenAmount));
 
-        ItemBought(_owner, _outcomeId, itemId, _tokenAmount);
+        UnitBought(_owner, _outcomeId, unitId, _tokenAmount);
     }
 
     /*
-        @dev Allow any user to buy an item on a specific outcome. 
-        Before calling buyItem the user should first call the approve(thisEventAddress, tokenAmount) on the 
+        @dev Allow any user to buy an unit on a specific outcome.
+        Before calling buyUnit the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
-        @param _tokenAmount The amount of tokens invested in this item
+        @param _tokenAmount The amount of tokens invested in this unit
         @param _outcomeId   The outcome the user predicts.
     */
-    function buyItem(uint _tokenAmount, uint _outcomeId) external  {
-        buyItem(msg.sender, _tokenAmount, _outcomeId);
+    function buyUnit(uint _tokenAmount, uint _outcomeId) external  {
+        buyUnitFor(msg.sender, _tokenAmount, _outcomeId);
     }
 
     /*
-        @dev Allow the event owner to resolve the event.
-        Before calling resolve() the oracle owner should first set the event outcome by calling setOutcome(thisEventAddress, winningOutcomeId) 
+        @dev Allow the prediction owner to resolve the prediction.
+        Before calling resolve() the oracle owner should first set the prediction outcome by calling setOutcome(thisPredictionAddress, winningOutcomeId)
         in the Oracle contract.
     */
     function resolve() public statusIs(Status.Published) ownerOnly {
         require(isOutcomeExist((Oracle(oracleAddress)).getOutcome(this)) &&
-            (itemBuyingEndTimeSeconds < now));
+            (unitBuyingEndTimeSeconds < now));
 
         winningOutcomeId = (Oracle(oracleAddress)).getOutcome(this);
 
-        // In the very unlikely event that no one bought an item on the winning outcome - throw exception.
-        // The only items for the event operator is to cancel the event and refund the money, or change the event end time)
+        // In the very unlikely prediction that no one bought an unit on the winning outcome - throw exception.
+        // The only units for the prediction operator is to cancel the prediction and refund the money, or change the prediction end time)
         assert(outcomes[winningOutcomeId - 1].tokens > 0);
 
         status = Status.Resolved;
 
-        EventResolved(oracleAddress, winningOutcomeId);
+        PredictionResolved(oracleAddress, winningOutcomeId);
     }
 
     /*
-        @dev After the event is resolved the user can withdraw tokens from his winning items
-        Alternatively the event owner / operator can choose to pay all the users himself using the payAllItems() function
+        @dev After the prediction is resolved the user can withdraw tokens from his winning units
+        Alternatively the prediction owner / operator can choose to pay all the users himself using the payAllUnits() function
     */
-    function withdrawItems() public statusIs(Status.Resolved) {
-        require(ownerItems[msg.sender][winningOutcomeId].length <= MAX_ITEMS_WITHDRAWN);
-        withdrawItemsBulk(0, ownerItems[msg.sender][winningOutcomeId].length);
+    function withdrawUnits() public statusIs(Status.Resolved) {
+        require(ownerUnits[msg.sender][winningOutcomeId].length <= MAX_UNITS_WITHDRAWN);
+        withdrawUnitsBulk(0, ownerUnits[msg.sender][winningOutcomeId].length);
     }
 
     /*
-        @dev After the event is resolved the user can withdraw tokens from his winning items
-        Alternatively the event owner / operator can choose to pay all the users himself using the payAllItems() function
+        @dev After the prediction is resolved the user can withdraw tokens from his winning units
+        Alternatively the prediction owner / operator can choose to pay all the users himself using the payAllUnits() function
 
-        @param _indexStart From which item index should we start withdrawing
-        @param _maxItems   How many items should we withdraw
+        @param _indexStart From which unit index should we start withdrawing
+        @param _maxUnits   How many units should we withdraw
     */
-    function withdrawItemsBulk(uint _indexStart, uint _maxItems) public statusIs(Status.Resolved) greaterThanZero(_maxItems) {
+    function withdrawUnitsBulk(uint _indexStart, uint _maxUnits) public statusIs(Status.Resolved) greaterThanZero(_maxUnits) {
         require(
-            (hasItems(msg.sender, winningOutcomeId) &&
-            (!areItemsWithdrawn(msg.sender, winningOutcomeId, _indexStart, _maxItems))));
+            (hasUnits(msg.sender, winningOutcomeId) &&
+            (!areUnitsWithdrawn(msg.sender, winningOutcomeId, _indexStart, _maxUnits))));
 
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
         uint userWinTokens = 0;
 
-        uint indexEnd = safeAdd(_indexStart, _maxItems);
-        if (indexEnd > ownerItems[msg.sender][winningOutcomeId].length) {
-            indexEnd = ownerItems[msg.sender][winningOutcomeId].length;
+        uint indexEnd = safeAdd(_indexStart, _maxUnits);
+        if (indexEnd > ownerUnits[msg.sender][winningOutcomeId].length) {
+            indexEnd = ownerUnits[msg.sender][winningOutcomeId].length;
         }
 
         for (uint i = _indexStart; i < indexEnd; i++) {
-            Item storage item = items[ownerItems[msg.sender][winningOutcomeId][i] - 1];
-            userWinTokens = safeAdd(userWinTokens, (safeMul(item.tokens, tokenPool) / winningOutcomeTokens));
-            item.isWithdrawn = true;
+            Unit storage unit = units[ownerUnits[msg.sender][winningOutcomeId][i] - 1];
+            userWinTokens = safeAdd(userWinTokens, (safeMul(unit.tokens, tokenPool) / winningOutcomeTokens));
+            unit.isWithdrawn = true;
         }
 
         if (userWinTokens > 0) {
             stox.transfer(msg.sender, userWinTokens);
         }
 
-        ItemsWithdrawn(msg.sender, userWinTokens);
+        UnitsWithdrawn(msg.sender, userWinTokens);
     }
 
     /*
-        @dev After the event is resolved the event owner can pay tokens for all the winning items
-        Alternatively the event owner / operator can choose that the users will need to withdraw the funds using the withdrawItems() function
+        @dev After the prediction is resolved the prediction owner can pay tokens for all the winning units
+        Alternatively the prediction owner / operator can choose that the users will need to withdraw the funds using the withdrawUnits() function
     */    
-    function payAllItems() public ownerOnly statusIs(Status.Resolved) {
-        require(items.length <= MAX_ITEMS_PAID);
-        payAllItemsBulk(0, items.length);
+    function payAllUnits() public ownerOnly statusIs(Status.Resolved) {
+        require(units.length <= MAX_UNITS_PAID);
+        payAllUnitsBulk(0, units.length);
     }
 
     /*
-        @dev After the event is resolved the event owner can pay tokens for all the winning items
-        Alternatively the event owner / operator can choose that the users will need to withdraw the funds using the withdrawItems() function
+        @dev After the prediction is resolved the prediction owner can pay tokens for all the winning units
+        Alternatively the prediction owner / operator can choose that the users will need to withdraw the funds using the withdrawUnits() function
 
-        @param _indexStart From which item index should we start paying
-        @param _maxItems   How many items should we pay
+        @param _indexStart From which unit index should we start paying
+        @param _maxUnits   How many units should we pay
     */    
-    function payAllItemsBulk(uint _indexStart, uint _maxItems) public ownerOnly statusIs(Status.Resolved) greaterThanZero(_maxItems) {
+    function payAllUnitsBulk(uint _indexStart, uint _maxUnits) public ownerOnly statusIs(Status.Resolved) greaterThanZero(_maxUnits) {
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
 
-        uint indexEnd = safeAdd(_indexStart, _maxItems);
-        if (indexEnd > items.length) {
-            indexEnd = items.length;
+        uint indexEnd = safeAdd(_indexStart, _maxUnits);
+        if (indexEnd > units.length) {
+            indexEnd = units.length;
         }
 
         for (uint i = _indexStart; i < indexEnd; i++) {
-            Item storage item = items[i];
-            if ((item.id != 0) && (item.outcomeId == winningOutcomeId) && !item.isWithdrawn) {
-                item.isWithdrawn = true;
-                uint userWinTokens = safeMul(item.tokens, tokenPool) / winningOutcomeTokens;
-                stox.transfer(item.owner, userWinTokens);
+            Unit storage unit = units[i];
+            if ((unit.id != 0) && (unit.outcomeId == winningOutcomeId) && !unit.isWithdrawn) {
+                unit.isWithdrawn = true;
+                uint userWinTokens = safeMul(unit.tokens, tokenPool) / winningOutcomeTokens;
+                stox.transfer(unit.owner, userWinTokens);
             }
         }
 
-        ItemsPaid(safeAdd(_indexStart, 1), indexEnd);
+        UnitsPaid(safeAdd(_indexStart, 1), indexEnd);
     }
 
     /*
-        @dev Returns the amount of tokens a user can withdraw from his item after the event is resolved
+        @dev Returns the amount of tokens a user can withdraw from his unit after the prediction is resolved
 
-        @param _owner   Items owner
+        @param _owner   Units owner
 
         @return         Token amount
     */ 
-    function calculateUserItemsWithdrawValue(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
+    function calculateUserUnitsWithdrawValue(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
         uint userWinTokens = 0;
 
-        for (uint i = 0; i < ownerItems[_owner][winningOutcomeId].length; i++) {
-            Item storage item = items[ownerItems[_owner][winningOutcomeId][i] - 1];
-            userWinTokens = safeAdd(userWinTokens, (safeMul(item.tokens, tokenPool) / winningOutcomeTokens));
+        for (uint i = 0; i < ownerUnits[_owner][winningOutcomeId].length; i++) {
+            Unit storage unit = units[ownerUnits[_owner][winningOutcomeId][i] - 1];
+            userWinTokens = safeAdd(userWinTokens, (safeMul(unit.tokens, tokenPool) / winningOutcomeTokens));
         }
 
         return (userWinTokens);
     }
 
     /*
-        @dev Returns the amount of tokens a user invested in an outcome items
+        @dev Returns the amount of tokens a user invested in an outcome units
 
-        @param _owner       Items owner
+        @param _owner       Units owner
         @param _outcomeId   Outcome id
 
         @return             Token amount
     */ 
-    function calculateUserItemsValue(address _owner, uint _outcomeId) external constant returns (uint) {
+    function calculateUserUnitsValue(address _owner, uint _outcomeId) external constant returns (uint) {
         uint userTokens = 0;
 
-        for (uint i = 0; i < ownerItems[_owner][_outcomeId].length; i++) {
-            Item storage item = items[ownerItems[_owner][_outcomeId][i] - 1];
-            userTokens = safeAdd(userTokens, item.tokens);
+        for (uint i = 0; i < ownerUnits[_owner][_outcomeId].length; i++) {
+            Unit storage unit = units[ownerUnits[_owner][_outcomeId][i] - 1];
+            userTokens = safeAdd(userTokens, unit.tokens);
         }
 
         return (userTokens);
     }
 
     /*
-        @dev Allow the event owner to cancel the event.
-        After the event is canceled users can no longer buy items, and are able to get a refund for their items tokens.
+        @dev Allow the prediction owner to cancel the prediction.
+        After the prediction is canceled users can no longer buy units, and are able to get a refund for their units tokens.
     */
     function cancel() public ownerOnly {
         require ((status == Status.Published) ||
@@ -427,89 +427,89 @@ contract PoolEvent is Ownable, Utils {
         
         status = Status.Canceled;
 
-        EventCanceled();
+        PredictionCanceled();
     }
 
     /*
-        @dev Allow to event owner / operator to cancel the user's items and refund the tokens.
+        @dev Allow to prediction owner / operator to cancel the user's units and refund the tokens.
 
-        @param _owner Items owner
+        @param _owner Units owner
         @param _outcomeId   Outcome to refund
     */
     function refundUser(address _owner, uint _outcomeId) public ownerOnly {
         require ((status != Status.Resolved) &&
-                (ownerItems[_owner][_outcomeId].length <= MAX_ITEMS_REFUND));
+                (ownerUnits[_owner][_outcomeId].length <= MAX_UNITS_REFUND));
         
-        performRefundBulk(_owner, _outcomeId, 0, ownerItems[_owner][_outcomeId].length);
+        performRefundBulk(_owner, _outcomeId, 0, ownerUnits[_owner][_outcomeId].length);
         
     }
 
     /*
-        @dev Allow to event owner / operator to cancel the user's items and refund the tokens.
+        @dev Allow to prediction owner / operator to cancel the user's units and refund the tokens.
 
-        @param _owner Items owner
+        @param _owner Units owner
         @param _outcomeId   Outcome to refund
-        @param _indexStart  From which item index should we refund
-        @param _maxItems    How many items should we refund
+        @param _indexStart  From which unit index should we refund
+        @param _maxUnits    How many units should we refund
     */
-    function refundUserBulk(address _owner, uint _outcomeId, uint _indexStart, uint _maxItems) public ownerOnly {
+    function refundUserBulk(address _owner, uint _outcomeId, uint _indexStart, uint _maxUnits) public ownerOnly {
         require (status != Status.Resolved);
         
-        performRefundBulk(_owner, _outcomeId, _indexStart, _maxItems);
+        performRefundBulk(_owner, _outcomeId, _indexStart, _maxUnits);
     }
 
     /*
-        @dev Allow the user to cancel his items and refund the tokens he invested in items. 
-        Can be called only after the event is canceled.
+        @dev Allow the user to cancel his units and refund the tokens he invested in units.
+        Can be called only after the prediction is canceled.
 
         @param _outcomeId   Outcome to refund
     */
     function getRefund(uint _outcomeId) public statusIs(Status.Canceled) {
-        require(ownerItems[_owner][_outcomeId].length <= MAX_ITEMS_REFUND)
-        performRefundBulk(msg.sender, _outcomeId, 0, ownerItems[msg.sender][_outcomeId].length);
+        require(ownerUnits[msg.sender][_outcomeId].length <= MAX_UNITS_REFUND);
+        performRefundBulk(msg.sender, _outcomeId, 0, ownerUnits[msg.sender][_outcomeId].length);
     }
 
     /*
-        @dev Allow the user to cancel his items and refund the tokens he invested in items. 
-        Can be called only after the event is canceled.
+        @dev Allow the user to cancel his units and refund the tokens he invested in units.
+        Can be called only after the prediction is canceled.
 
         @param _outcomeId   Outcome to refund
-        @param _indexStart  From which item index should we refund
-        @param _maxItems    How many items should we refund
+        @param _indexStart  From which unit index should we refund
+        @param _maxUnits    How many units should we refund
     */
-    function getRefundBulk(uint _outcomeId, uint _indexStart, uint _maxItems) public statusIs(Status.Canceled) {
-        performRefundBulk(msg.sender, _outcomeId, _indexStart, _maxItems);
+    function getRefundBulk(uint _outcomeId, uint _indexStart, uint _maxUnits) public statusIs(Status.Canceled) {
+        performRefundBulk(msg.sender, _outcomeId, _indexStart, _maxUnits);
     }
 
     /*
-        @dev Refund a specific user's items tokens and cancel the user's items.
+        @dev Refund a specific user's units tokens and cancel the user's units.
 
-        @param _owner       Items owner
+        @param _owner       Units owner
         @param _outcomeId   Outcome to refund
-        @param _indexStart  From which item index should we refund
-        @param _maxItems    How many items should we refund
+        @param _indexStart  From which unit index should we refund
+        @param _maxUnits    How many units should we refund
     */
-    function performRefundBulk(address _owner, uint _outcomeId, uint _indexStart, uint _maxItems) private greaterThanZero(_maxItems) {
+    function performRefundBulk(address _owner, uint _outcomeId, uint _indexStart, uint _maxUnits) private greaterThanZero(_maxUnits) {
         require((tokenPool > 0) &&
-                hasItems(_owner, _outcomeId));
+                hasUnits(_owner, _outcomeId));
 
-        uint indexEnd = safeAdd(_indexStart, _maxItems);
-        if (indexEnd > ownerItems[_owner][_outcomeId].length) {
-            indexEnd = ownerItems[_owner][_outcomeId].length;
+        uint indexEnd = safeAdd(_indexStart, _maxUnits);
+        if (indexEnd > ownerUnits[_owner][_outcomeId].length) {
+            indexEnd = ownerUnits[_owner][_outcomeId].length;
         }
         
         uint refundAmount = 0;
 
-        for (uint itemPos = _indexStart; itemPos < indexEnd; itemPos++) {
-            uint itemId = ownerItems[_owner][_outcomeId][itemPos];
+        for (uint unitPos = _indexStart; unitPos < indexEnd; unitPos++) {
+            uint unitId = ownerUnits[_owner][_outcomeId][unitPos];
             
-            if (items[itemId - 1].tokens > 0) {
-                outcomes[_outcomeId - 1].tokens = safeSub(outcomes[_outcomeId - 1].tokens, items[itemId - 1].tokens);
-                refundAmount = safeAdd(refundAmount, items[itemId - 1].tokens);
+            if (units[unitId - 1].tokens > 0) {
+                outcomes[_outcomeId - 1].tokens = safeSub(outcomes[_outcomeId - 1].tokens, units[unitId - 1].tokens);
+                refundAmount = safeAdd(refundAmount, units[unitId - 1].tokens);
 
                 // After the token amount to refund is calculated - delete the user's tokens
-                delete ownerItems[_owner][_outcomeId][itemPos];
-                delete items[itemId - 1];
+                delete ownerUnits[_owner][_outcomeId][unitPos];
+                delete units[unitId - 1];
             }
         }
 
@@ -522,33 +522,33 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /*
-        @dev Allow to event owner / operator to cancel all the users items and refund their tokens.
+        @dev Allow to prediction owner / operator to cancel all the users units and refund their tokens.
     */
     function refundAllUsers() public ownerOnly statusIs(Status.Canceled) {
-        require(items.length <= MAX_ITEMS_REFUND);
-        refundItemsBulk(0, items.length);
+        require(units.length <= MAX_UNITS_REFUND);
+        refundUnitsBulk(0, units.length);
     }
 
     /*
-        @dev Allow to event owner / operator to cancel the users items and refund their tokens.
+        @dev Allow to prediction owner / operator to cancel the users units and refund their tokens.
 
-        @param _indexStart From which item index should we start refunding
-        @param _maxItems   How many items should refund
+        @param _indexStart From which unit index should we start refunding
+        @param _maxUnits   How many units should refund
     */
-    function refundItemsBulk(uint _indexStart, uint _maxItems) public ownerOnly statusIs(Status.Canceled) greaterThanZero(_maxItems) {
+    function refundUnitsBulk(uint _indexStart, uint _maxUnits) public ownerOnly statusIs(Status.Canceled) greaterThanZero(_maxUnits) {
         require(tokenPool > 0);
 
-        uint indexEnd = safeAdd(_indexStart, _maxItems);
-        if (indexEnd > items.length) {
-            indexEnd = items.length;
+        uint indexEnd = safeAdd(_indexStart, _maxUnits);
+        if (indexEnd > units.length) {
+            indexEnd = units.length;
         }
 
         for (uint i = _indexStart; i < indexEnd; i++) {
-            Item storage item = items[i];
-            if (item.id != 0) {
-                uint refundTokens = item.tokens;
-                address owner = item.owner;
-                delete items[i];
+            Unit storage unit = units[i];
+            if (unit.id != 0) {
+                uint refundTokens = unit.tokens;
+                address owner = unit.owner;
+                delete units[i];
 
                 stox.transfer(owner, refundTokens);
             }
@@ -556,17 +556,17 @@ contract PoolEvent is Ownable, Utils {
 
         tokenPool = 0;
         
-        ItemsRefunded(safeAdd(_indexStart, 1), indexEnd);
+        UnitsRefunded(safeAdd(_indexStart, 1), indexEnd);
     }
 
     /*
-        @dev Allow the event owner to pause the event.
-        After the event is paused users can no longer buy items until the event is republished
+        @dev Allow the prediction owner to pause the prediction.
+        After the prediction is paused users can no longer buy units until the prediction is republished
     */
     function pause() public statusIs(Status.Published) ownerOnly {
         status = Status.Paused;
 
-        EventPaused();
+        PredictionPaused();
     }
 
     /*
@@ -583,7 +583,7 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /*
-        @dev Returns true if the event contains a specific outcome id
+        @dev Returns true if the prediction contains a specific outcome id
 
         @param _outcomeId   Outcome id
 
@@ -594,21 +594,21 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /*
-        @dev Returns true if the user's items of an outcome are all withdrawn
+        @dev Returns true if the user's units of an outcome are all withdrawn
 
-        @param _owner       Items owner
+        @param _owner       Units owner
         @param _outcomeId   Outcome id
 
-        @return             true if the user's items  on an outcome are all withdrawn
+        @return             true if the user's units  on an outcome are all withdrawn
     */
-    function areItemsWithdrawn(address _owner, uint _outcomeId, uint _indexStart, uint _maxItems) private view greaterThanZero(_maxItems) returns(bool) {
-        uint indexEnd = safeAdd(_indexStart, _maxItems);
-        if (indexEnd > ownerItems[_owner][_outcomeId].length) {
-            indexEnd = ownerItems[_owner][_outcomeId].length;
+    function areUnitsWithdrawn(address _owner, uint _outcomeId, uint _indexStart, uint _maxUnits) private view greaterThanZero(_maxUnits) returns(bool) {
+        uint indexEnd = safeAdd(_indexStart, _maxUnits);
+        if (indexEnd > ownerUnits[_owner][_outcomeId].length) {
+            indexEnd = ownerUnits[_owner][_outcomeId].length;
         }
 
         for (uint i = _indexStart; i <= indexEnd; i++) {
-            if (!items[ownerItems[_owner][_outcomeId][i] - 1].isWithdrawn) {
+            if (!units[ownerUnits[_owner][_outcomeId][i] - 1].isWithdrawn) {
                 return false;
             }
         }
@@ -617,14 +617,14 @@ contract PoolEvent is Ownable, Utils {
     }
 
     /*
-        @dev Returns true if the user bought items of a specific outcome
+        @dev Returns true if the user bought units of a specific outcome
 
-        @param _owner       Items owner
+        @param _owner       Units owner
         @param _outcomeId   Outcome id
 
-        @return             true if the user bought items on a specific outcome
+        @return             true if the user bought units on a specific outcome
     */
-    function hasItems(address _owner, uint _outcomeId) private view returns(bool) {
-        return (ownerItems[_owner][_outcomeId].length > 0);
+    function hasUnits(address _owner, uint _outcomeId) private view returns(bool) {
+        return (ownerUnits[_owner][_outcomeId].length > 0);
     }
 }
