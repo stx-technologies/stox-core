@@ -10,7 +10,7 @@ Our first smart contracts are being released with a Pool Prediction. A Pool Pred
 
 ### Pool Prediction Example
 
-An prediction has 3 different outcomes:
+A prediction has 3 different outcomes:
 1. Outcome 1
 2. Outcome 2
 3. Outcome 3
