@@ -4,13 +4,13 @@ Stox is a blockchain prediction markets platform. To learn more about Stox pleas
 
 ## Contracts Overview
 
-Our first smart contracts are being released with a Pool Event. A Pool Event distributes tokens between all winners according to their proportional investment in the winning outcome. The event winning outcome is decided by an oracle contract.
+Our first smart contracts are being released with a Pool Prediction. A Pool Prediction distributes tokens between all winners according to their proportional investment in the winning outcome. The prediction winning outcome is decided by an oracle contract.
 
-## Pool Event
+## Pool Prediction
 
-### Pool Event Example
+### Pool Prediction Example
 
-An event has 3 different outcomes:
+An prediction has 3 different outcomes:
 1. Outcome 1
 2. Outcome 2
 3. Outcome 3
@@ -22,16 +22,16 @@ An event has 3 different outcomes:
  
 Total token pool: 600
  
-For example, after the event ends, the oracle decides the winning outcome is Outcome 1. Users can now withdraw the following token amount from their predictions:  
+For example, after the prediction ends, the oracle decides the winning outcome is Outcome 1. Users can now withdraw the following token amount from their predictions:  
 * User A -> 150 tokens (100 / (100 + 300) * 600)
 * User B -> 450 tokens (300 / (100 + 300) * 600)
 * User C -> 0 tokens
 * User D -> 0 tokens
 
-### Pool Event Lifecycle
+### Pool Prediction Lifecycle
 
-* **Initializing** - The status when the event is first created. During this stage we define the event outcomes.
-* **Published** - The event is published and users can now predict on the different outcomes.
-* **Resolved** - The event is resolved and users can withdraw their winnings.
-* **Paused** - The event is paused and users can no longer make predictions until the event is published again.
-* **Canceled** - The event is canceled. Users can get their STX refunded to them.
+* **Initializing** - The status when the prediction is first created. During this stage we define the prediction outcomes.
+* **Published** - The prediction is published and users can now predict on the different outcomes.
+* **Resolved** - The prediction is resolved and users can withdraw their winnings.
+* **Paused** - The prediction is paused and users can no longer make predictions until the prediction is published again.
+* **Canceled** - The prediction is canceled. Users can get their STX refunded to them.
