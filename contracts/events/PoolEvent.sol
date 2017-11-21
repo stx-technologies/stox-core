@@ -306,7 +306,8 @@ contract PoolEvent is Ownable, Utils {
         Alternatively the event owner / operator can choose to pay all the users himself using the payAllItems() function
     */
     function withdrawItems() public statusIs(Status.Resolved) {
-        withdrawItemsBulk(0, MAX_ITEMS_WITHDRAWN);
+        require(ownerItems[msg.sender][winningOutcomeId].length <= MAX_ITEMS_WITHDRAWN);
+        withdrawItemsBulk(0, ownerItems[msg.sender][winningOutcomeId].length);
     }
 
     /*
@@ -347,7 +348,8 @@ contract PoolEvent is Ownable, Utils {
         Alternatively the event owner / operator can choose that the users will need to withdraw the funds using the withdrawItems() function
     */    
     function payAllItems() public ownerOnly statusIs(Status.Resolved) {
-        payAllItemsBulk(0, MAX_ITEMS_PAID);
+        require(items.length <= MAX_ITEMS_PAID);
+        payAllItemsBulk(0, items.length);
     }
 
     /*
@@ -435,9 +437,10 @@ contract PoolEvent is Ownable, Utils {
         @param _outcomeId   Outcome to refund
     */
     function refundUser(address _owner, uint _outcomeId) public ownerOnly {
-        require (status != Status.Resolved);
+        require ((status != Status.Resolved) &&
+                (ownerItems[_owner][_outcomeId].length <= MAX_ITEMS_REFUND));
         
-        performRefundBulk(_owner, _outcomeId, 0, MAX_ITEMS_REFUND);
+        performRefundBulk(_owner, _outcomeId, 0, ownerItems[_owner][_outcomeId].length);
         
     }
 
@@ -462,7 +465,8 @@ contract PoolEvent is Ownable, Utils {
         @param _outcomeId   Outcome to refund
     */
     function getRefund(uint _outcomeId) public statusIs(Status.Canceled) {
-        performRefundBulk(msg.sender, _outcomeId, 0, MAX_ITEMS_REFUND);
+        require(ownerItems[_owner][_outcomeId].length <= MAX_ITEMS_REFUND)
+        performRefundBulk(msg.sender, _outcomeId, 0, ownerItems[msg.sender][_outcomeId].length);
     }
 
     /*
@@ -521,7 +525,8 @@ contract PoolEvent is Ownable, Utils {
         @dev Allow to event owner / operator to cancel all the users items and refund their tokens.
     */
     function refundAllUsers() public ownerOnly statusIs(Status.Canceled) {
-        refundItemsBulk(0, MAX_ITEMS_REFUND);
+        require(items.length <= MAX_ITEMS_REFUND);
+        refundItemsBulk(0, items.length);
     }
 
     /*
