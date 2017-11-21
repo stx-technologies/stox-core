@@ -9,7 +9,7 @@ import "../token/IERC20Token.sol";
     their proportional investment in the winning outcome. The prediction winning outcome is decided by the oracle.
 
     An example of a pool prediction
-    ---------------------------
+    -------------------------------
     An prediction has 3 different outcomes:
     1. Outcome1
     2. Outcome2
