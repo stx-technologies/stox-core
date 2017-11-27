@@ -49,6 +49,7 @@ contract PoolPrediction is Ownable, Utils {
     event PredictionResolved(address indexed _oracle, uint indexed _winningOutcomeId);
     event UnitBought(address indexed _owner, uint indexed _outcomeId, uint indexed _unitId, uint _tokenAmount);
     event UnitsWithdrawn(address indexed _owner, uint _tokenAmount);
+    event UnitWithdrawn(address indexed _owner, uint _unitId, uint _tokenAmount);
     event UnitsPaid(uint _unitIdStart, uint _unitIdEnd);
     event UserRefunded(address indexed _owner, uint _outcomeId, uint _tokenAmount);
     event UnitsRefunded(uint _unitIdStart, uint _unitIdEnd);
@@ -204,7 +205,7 @@ contract PoolPrediction is Ownable, Utils {
 
         @param _newPredictionEndTimeSeconds Prediction end time
     */
-    function setPredictionEndTime(uint _newPredictionEndTimeSeconds) external ownerOnly {
+    function setPredictionEndTime(uint _newPredictionEndTimeSeconds) greaterThanZero(_newPredictionEndTimeSeconds) external ownerOnly {
          require ((_newPredictionEndTimeSeconds >= unitBuyingEndTimeSeconds) &&
             ((status == Status.Initializing) || 
                 (status == Status.Paused)));
@@ -293,12 +294,33 @@ contract PoolPrediction is Ownable, Utils {
         winningOutcomeId = (Oracle(oracleAddress)).getOutcome(this);
 
         // In the very unlikely prediction that no one bought an unit on the winning outcome - throw exception.
-        // The only units for the prediction operator is to cancel the prediction and refund the money, or change the prediction end time)
+        // The only option for the prediction operator is to cancel the prediction and refund the money, or to change the prediction end time
         assert(outcomes[winningOutcomeId - 1].tokens > 0);
 
         status = Status.Resolved;
 
         PredictionResolved(oracleAddress, winningOutcomeId);
+    }
+
+    /*
+        @dev After the prediction is resolved the user can withdraw tokens from his winning units
+        Alternatively the prediction owner / operator can choose to pay all the users himself using the payAllUnits() function
+    */
+    function withdrawUnit(uint _unitId) public statusIs(Status.Resolved) greaterThanZero(_unitId) {
+        require((units[_unitId - 1].owner == msg.sender) &&
+            !(units[_unitId - 1].isWithdrawn) &&
+            (units[_unitId - 1].outcomeId == winningOutcomeId));
+
+        Unit storage unit = units[_unitId - 1];
+        uint winningOutcomeTokens = outcomes[winningOutcomeId - 1].tokens;
+        uint userWinTokens = safeMul(unit.tokens, tokenPool) / winningOutcomeTokens;
+        unit.isWithdrawn = true;
+        
+        if (userWinTokens > 0) {
+            stox.transfer(msg.sender, userWinTokens);
+        }
+
+        UnitWithdrawn(msg.sender, _unitId, userWinTokens);
     }
 
     /*

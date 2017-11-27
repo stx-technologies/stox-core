@@ -37,12 +37,12 @@ function verifyUnit(unit, id, outcomeId, tokens, isWithdrawn, ownerAddress) {
 
 contract('PoolPrediction', function(accounts) {
 
-    let factoryOperator = accounts[0];
-    let oracleOperator  = accounts[1];
-    let predictionOperator   = accounts[2];
-    let player1         = accounts[3];
-    let player2         = accounts[4];
-    let player3         = accounts[5];
+    let factoryOperator     = accounts[0];
+    let oracleOperator      = accounts[1];
+    let predictionOperator  = accounts[2];
+    let player1             = accounts[3];
+    let player2             = accounts[4];
+    let player3             = accounts[5];
 
     let tommorowInSeconds;
     let nowInSeconds;
