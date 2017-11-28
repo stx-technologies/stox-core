@@ -53,6 +53,7 @@ contract PoolPrediction is Ownable, Utils {
     event UnitsPaid(uint _unitIdStart, uint _unitIdEnd);
     event UserRefunded(address indexed _owner, uint _outcomeId, uint _tokenAmount);
     event UnitsRefunded(uint _unitIdStart, uint _unitIdEnd);
+    event UnitRefunded(address indexed _owner, uint _unitId, uint _tokenAmount);
     event UnitBuyingEndTimeChanged(uint _newTime);
     event PredictionEndTimeChanged(uint _newTime);
     event PredictionNameChanged(string _newName);
@@ -305,6 +306,8 @@ contract PoolPrediction is Ownable, Utils {
     /*
         @dev After the prediction is resolved the user can withdraw tokens from his winning units
         Alternatively the prediction owner / operator can choose to pay all the users himself using the payAllUnits() function
+
+        @param _unitId The unit to withdraw
     */
     function withdrawUnit(uint _unitId) public statusIs(Status.Resolved) greaterThanZero(_unitId) {
         require((units[_unitId - 1].owner == msg.sender) &&
@@ -421,22 +424,53 @@ contract PoolPrediction is Ownable, Utils {
     }
 
     /*
-        @dev Returns the amount of tokens a user invested in an outcome units
+        @dev Returns the total amount of tokens a user spent on all his units
+
+        @param _owner       Units owner
+
+        @return             Token amount
+    */ 
+    function calculateUserUnitsValue(address _owner) external constant returns (uint) {
+        uint userTokens = 0;
+
+        for (uint outcomeId = 1; outcomeId <= outcomes.length; outcomeId++) {
+            for (uint i = 0; i < ownerUnits[_owner][outcomeId].length; i++) {
+                Unit storage unit = units[ownerUnits[_owner][outcomeId][i] - 1];
+                userTokens = safeAdd(userTokens, unit.tokens);
+            }
+        }
+
+        return (userTokens);
+    }
+
+    /*
+        @dev Returns the amount of units a user bought in an outcome
 
         @param _owner       Units owner
         @param _outcomeId   Outcome id
 
-        @return             Token amount
+        @return             Units amount
     */ 
-    function calculateUserUnitsValue(address _owner, uint _outcomeId) external constant returns (uint) {
-        uint userTokens = 0;
+    function getUserUnitCount(address _owner, uint _outcomeId) external constant returns (uint) {
+        return (ownerUnits[_owner][_outcomeId].length);
+    }
 
-        for (uint i = 0; i < ownerUnits[_owner][_outcomeId].length; i++) {
-            Unit storage unit = units[ownerUnits[_owner][_outcomeId][i] - 1];
-            userTokens = safeAdd(userTokens, unit.tokens);
-        }
+    /*
+        @dev Returns the amount of units all users bought
 
-        return (userTokens);
+        @return             Units amount
+    */ 
+    function getUnitCount() external constant returns (uint) {
+        return (units.length);
+    }
+
+    /*
+        @dev Returns the number of event outcomes
+
+        @return             Outcomes amount
+    */ 
+    function getOutcomeCount() external constant returns (uint) {
+        return (outcomes.length);
     }
 
     /*
@@ -579,6 +613,50 @@ contract PoolPrediction is Ownable, Utils {
         tokenPool = 0;
         
         UnitsRefunded(safeAdd(_indexStart, 1), indexEnd);
+    }
+
+    /*
+        @dev Allow to unit owner to cancel the a unit and refund its tokens after the event is canceled.
+
+        @param _unitId The unit to refund
+    */
+    function getRefundForUnit(uint _unitId) public statusIs(Status.Canceled) {
+        require(units[_unitId - 1].owner == msg.sender);
+
+        performRefundUnit(_unitId);
+    }
+
+    /*
+        @dev Allow to prediction operator to cancel the a unit and refund its tokens.
+
+        @param _unitId The unit to refund
+    */
+    function refundUnit(uint _unitId) public ownerOnly {
+        require(status != Status.Resolved);
+
+        performRefundUnit(_unitId);
+    }
+
+    /*
+        @dev Allow to prediction owner / unit owner to cancel the a unit and refund its tokens.
+
+        @param _unitId The unit to refund
+    */
+    function performRefundUnit(uint _unitId) private greaterThanZero(_unitId) {
+        require(units[_unitId - 1].id != 0);
+
+        Unit storage unit = units[_unitId - 1];
+        uint refundTokens = unit.tokens;
+        address owner = unit.owner;
+
+        tokenPool = safeSub(tokenPool, refundTokens);
+        outcomes[unit.outcomeId - 1].tokens = safeSub(outcomes[unit.outcomeId - 1].tokens, refundTokens);
+
+        delete units[_unitId - 1];
+
+        stox.transfer(owner, refundTokens);
+
+        UnitRefunded(owner, _unitId, refundTokens);
     }
 
     /*
