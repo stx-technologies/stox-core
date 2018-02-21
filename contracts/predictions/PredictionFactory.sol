@@ -10,8 +10,10 @@ contract PredictionFactory is Ownable {
 
     event PoolPredictionCreated(address indexed _creator, address indexed _newPrediction);
     
-    IPredictionFactoryImpl public factory;
+    //IPredictionFactoryImpl public factory;
+    address newCreatedPredictionAddress;
 
+    /*
     function PredictionFactory(IPredictionFactoryImpl _factory) public Ownable(msg.sender) {
         factory = _factory;
     }
@@ -21,11 +23,13 @@ contract PredictionFactory is Ownable {
 
         factory = _factory;
     }
+    */
 
-    function createPoolPrediction(address _oracle, uint _predictionEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public returns(address) {
-        address newPrediction = factory.createPoolPrediction(msg.sender, _oracle, _predictionEndTimeSeconds, _optionBuyingEndTimeSeconds, _name);
+    function createPoolPrediction(IPredictionFactoryImpl _factory, address _oracle, uint _predictionEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public {
+        address newPrediction = _factory.createPoolPrediction(msg.sender, _oracle, _predictionEndTimeSeconds, _optionBuyingEndTimeSeconds, _name);
 
         PoolPredictionCreated(msg.sender, newPrediction);
-        return (address(newPrediction));
+        //return (address(newPrediction));
+        newCreatedPredictionAddress = address(newPrediction);
     }
 }

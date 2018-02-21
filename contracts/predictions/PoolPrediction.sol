@@ -3,6 +3,7 @@ import "../Ownable.sol";
 import "../Utils.sol";
 import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
+import "../modules/PredictionStatus.sol";
 
 /**
     @title Pool prediction contract - Pool predictions distributes tokens between all winners according to
@@ -30,7 +31,7 @@ import "../token/IERC20Token.sol";
     User C -> 0 tokens
     User D -> 0 tokens
  */
-contract PoolPrediction is Ownable, Utils {
+contract PoolPrediction is Ownable, Utils, PredictionStatus {
 
     /*
     *   Constants
@@ -43,10 +44,10 @@ contract PoolPrediction is Ownable, Utils {
     /*
      *  Events
      */
-    event PredictionPublished();
-    event PredictionPaused();
-    event PredictionCanceled();
-    event PredictionResolved(address indexed _oracle, uint indexed _winningOutcomeId);
+    //event PredictionPublished();
+    //event PredictionPaused();
+    //event PredictionCanceled();
+    //event PredictionResolved(address indexed _oracle, uint indexed _winningOutcomeId);
     event UnitBought(address indexed _owner, uint indexed _outcomeId, uint indexed _unitId, uint _tokenAmount);
     event UnitsWithdrawn(address indexed _owner, uint _tokenAmount);
     event UnitsPaid(uint _unitIdStart, uint _unitIdEnd);
@@ -63,10 +64,10 @@ contract PoolPrediction is Ownable, Utils {
 
         @param _status Status to check
     */
-    modifier statusIs(Status _status) {
-        require(status == _status);
-        _;
-    }
+    //modifier statusIs(Status _status) {
+    //    require(status == _status);
+    //    _;
+    //}
 
     /**
         @dev Check if the prediction has this outcome id
@@ -81,13 +82,13 @@ contract PoolPrediction is Ownable, Utils {
     /*
      *  Enums and Structs
      */
-    enum Status {
-        Initializing,       // The status when the prediction is first created. During this stage we define the prediction outcomes.
-        Published,          // The prediction is published and users can now buy units.
-        Resolved,           // The prediction is resolved and users can withdraw their units.
-        Paused,             // The prediction is paused and users can no longer buy units until the prediction is published again.
-        Canceled            // The prediction is canceled. Users can get their invested tokens refunded to them.
-    }
+    //enum Status {
+    //    Initializing,       // The status when the prediction is first created. During this stage we define the prediction outcomes.
+    //   Published,          // The prediction is published and users can now buy units.
+    //    Resolved,           // The prediction is resolved and users can withdraw their units.
+    //   Paused,             // The prediction is paused and users can no longer buy units until the prediction is published again.
+    //    Canceled            // The prediction is canceled. Users can get their invested tokens refunded to them.
+    //}
 
     struct Outcome {
         uint    id;         // Id will start at 1, and increase by 1 for every new outcome
@@ -109,7 +110,7 @@ contract PoolPrediction is Ownable, Utils {
     string      public version = "0.1";
     string      public name;
     IERC20Token public stox;                       // Stox ERC20 token
-    Status      public status;
+    //Status      public status;
 
     // Note: operator should close the units sale in his website some time before the actual unitBuyingEndTimeSeconds as the ethereum network
     // may take several minutes to process transactions
@@ -176,13 +177,16 @@ contract PoolPrediction is Ownable, Utils {
         @dev Allow the prediction owner to publish the prediction - Users can now buy unit on the various outcomes.
     */
     function publish() public ownerOnly {
-        require ((outcomes.length > 1) && 
-            ((status == Status.Initializing) || 
-                (status == Status.Paused)));
+        require (outcomes.length > 1);
 
-        status = Status.Published;
+        super.publish();
+    //     && 
+    //        ((status == Status.Initializing) || 
+    //            (status == Status.Paused)));
 
-        PredictionPublished();
+    //    status = Status.Published;
+
+    //    PredictionPublished();
     }
 
     /*
@@ -286,7 +290,7 @@ contract PoolPrediction is Ownable, Utils {
         Before calling resolve() the oracle owner should first set the prediction outcome by calling setOutcome(thisPredictionAddress, winningOutcomeId)
         in the Oracle contract.
     */
-    function resolve() public statusIs(Status.Published) ownerOnly {
+    function resolve() public /*statusIs(Status.Published)*/ ownerOnly {
         require(isOutcomeExist((Oracle(oracleAddress)).getOutcome(this)) &&
             (unitBuyingEndTimeSeconds < now));
 
@@ -296,9 +300,11 @@ contract PoolPrediction is Ownable, Utils {
         // The only units for the prediction operator is to cancel the prediction and refund the money, or change the prediction end time)
         assert(outcomes[winningOutcomeId - 1].tokens > 0);
 
-        status = Status.Resolved;
+        super.resolve(oracleAddress,winningOutcomeId);
+        
+        //status = Status.Resolved;
 
-        PredictionResolved(oracleAddress, winningOutcomeId);
+        //PredictionResolved(oracleAddress, winningOutcomeId);
     }
 
     /*
@@ -422,12 +428,14 @@ contract PoolPrediction is Ownable, Utils {
         After the prediction is canceled users can no longer buy units, and are able to get a refund for their units tokens.
     */
     function cancel() public ownerOnly {
-        require ((status == Status.Published) ||
-            (status == Status.Paused));
+        super.cancel();
         
-        status = Status.Canceled;
+        //require ((status == Status.Published) ||
+        //    (status == Status.Paused));
+        
+        //status = Status.Canceled;
 
-        PredictionCanceled();
+        //PredictionCanceled();
     }
 
     /*
@@ -563,10 +571,12 @@ contract PoolPrediction is Ownable, Utils {
         @dev Allow the prediction owner to pause the prediction.
         After the prediction is paused users can no longer buy units until the prediction is republished
     */
-    function pause() public statusIs(Status.Published) ownerOnly {
-        status = Status.Paused;
+    function pause() public /*statusIs(Status.Published)*/ ownerOnly {
+        super.pause();
+        
+        //status = Status.Paused;
 
-        PredictionPaused();
+        //PredictionPaused();
     }
 
     /*
