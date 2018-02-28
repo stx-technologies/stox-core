@@ -269,7 +269,7 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
         ownerUnits[_owner][_outcomeId].push(unitId);
 
         assert(stox.transferFrom(_owner, this, _tokenAmount));
-
+        
         UnitBought(_owner, _outcomeId, unitId, _tokenAmount);
     }
 

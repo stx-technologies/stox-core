@@ -1,22 +1,23 @@
 pragma solidity ^0.4.18;
 import "./PoolPrediction.sol";
-import "./IPredictionFactoryImpl.sol";
+import "./IUpgradablePredictionFactory.sol";
 import "../token/IERC20Token.sol";
 
 /*
     @title PredictionFactoryImpl contract - The implementation for the Prediction Factory
  */
-contract PredictionFactoryImpl is IPredictionFactoryImpl, Utils {
+contract PredictionFactoryImpl is IUpgradablePredictionFactory, Utils {
 
-    IERC20Token public stox; // Stox ERC20 token
+    //IERC20Token public astox; // Stox ERC20 token
 
-    function PredictionFactoryImpl(IERC20Token _stox) public validAddress(_stox) {
-        stox = _stox;
-    }
+    event PoolPredictionCreated(address indexed _creator, address indexed _newPrediction);
 
-    function createPoolPrediction(address _owner, address _oracle, uint _predictionEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name) public returns(address) {
-        PoolPrediction newPrediction = new PoolPrediction(_owner, _oracle, _predictionEndTimeSeconds, _optionBuyingEndTimeSeconds, _name, stox);
+    function PredictionFactoryImpl() public {}
 
-        return (address(newPrediction));
+    function createPoolPrediction(address _oracle, uint _predictionEndTimeSeconds, uint _optionBuyingEndTimeSeconds, string _name, IERC20Token _stox) public validAddress(_stox) {
+        PoolPrediction newPrediction = new PoolPrediction(msg.sender, _oracle, _predictionEndTimeSeconds, _optionBuyingEndTimeSeconds, _name, _stox);
+
+        PoolPredictionCreated(msg.sender, address(newPrediction));
+        //return (address(newPrediction));
     }
 }

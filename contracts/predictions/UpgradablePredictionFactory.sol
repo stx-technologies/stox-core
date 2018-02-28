@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 import "../Ownable.sol";
 import "./PredictionFactoryRelayDispatcher.sol";
-import "./IPredictionFactoryImpl.sol";
+import "./IUpgradablePredictionFactory.sol";
 
 /*
     @title UpgradablePredictionFactory contract - A factory contract for generating predictions.
@@ -15,31 +15,31 @@ contract UpgradablePredictionFactory is Ownable {
 
     address relayDispatcher;
     address newCreatedPredictionAddress; 
-    IPredictionFactoryImpl public factory;
+    //address public factory;
     
-    function UpgradablePredictionFactory(address _relayDispatcher, IPredictionFactoryImpl _factory) 
+    function UpgradablePredictionFactory(address _relayDispatcher /*, address _factory*/) 
         public 
         Ownable(msg.sender) 
         {
             relayDispatcher = _relayDispatcher;
-            factory = _factory;
+            //factory = _factory;
     }
-    
-    function setFactory(IPredictionFactoryImpl _factory) public ownerOnly {
+    /*
+    function setFactory(address _factory) public ownerOnly {
         require ((address(_factory) != address(this)) && (address(_factory) != 0x0));
 
         factory = _factory;
     }
-
+    */
     /*
         @dev Fallback function to delegate calls to the relay contract
 
     */
     function() {
-        PredictionFactoryRelayDispatcher currentRelayVersionContract = PredictionFactoryRelayDispatcher(relayDispatcher); 
-        var currentRelayVersionAddress = currentRelayVersionContract.getPredictionFactoryImplAddress();
+        PredictionFactoryRelayDispatcher factoryRelayDispatcher = PredictionFactoryRelayDispatcher(relayDispatcher); 
+        address relay = factoryRelayDispatcher.getPredictionFactoryImplAddress();
         
-        if (!currentRelayVersionAddress.delegatecall(msg.data)) 
+        if (!relay.delegatecall(msg.data)) 
            revert();
     }
 
