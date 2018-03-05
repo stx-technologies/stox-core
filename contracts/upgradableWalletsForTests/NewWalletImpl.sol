@@ -39,6 +39,7 @@ contract NewWalletImpl is INewWalletImpl {
     event TransferToUserWithdrawalAccount(address _token, address _userWithdrawalAccount, uint _amount, address _feesToken, address _feesAccount, uint _fee);
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
     event VoteOnPoolPrediction(address _voter, address _prediction, uint _outcome, uint _amount);
+    event WithdrawFromPoolPrediction(address _wallet, address _prediction);
 
     /*
         @dev Initialize the wallet with the operator and backupAccount address
@@ -102,5 +103,13 @@ contract NewWalletImpl is INewWalletImpl {
         {
             _prediction.buyUnit(_amount,_outcome);
             VoteOnPoolPrediction(msg.sender,_prediction, _outcome, _amount);
+        }
+
+    function withdrawFromPoolPrediction(PoolPrediction _prediction)
+        public
+        validAddress(_prediction)
+        {
+            _prediction.withdrawUnits();
+            WithdrawFromPoolPrediction(msg.sender, _prediction);
         }
 }

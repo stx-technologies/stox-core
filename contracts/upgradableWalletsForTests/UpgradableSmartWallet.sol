@@ -26,8 +26,8 @@ contract UpgradableSmartWallet {
             wallet.initUpgradableSmartWallet(_backupAccount, _operator, _feesAccount, _relayDispatcher);
     }
 
-    function approveBuy(IERC20Token _token, address _prediction, uint _amount) public {
-        _token.approve(_prediction,_amount);
+    function approvePredictionBuying(IERC20Token _token, address _prediction, uint256 _amount) public returns (bool) {
+        return _token.approve(_prediction,_amount);
     }
 
     /*

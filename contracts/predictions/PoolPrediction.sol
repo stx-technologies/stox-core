@@ -4,6 +4,8 @@ import "../Utils.sol";
 import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
 import "../modules/PredictionStatus.sol";
+import "./PoolPredictionPrizeDistribution.sol";
+
 
 /**
     @title Pool prediction contract - Pool predictions distributes tokens between all winners according to
@@ -104,12 +106,19 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
         address owner;
     }
 
+    struct OutcomeUnitTokens {
+        uint    tokens;
+        bool    isWithdrawn;
+        bool    doesExist;
+    }
+
     /*
      *  Members
      */
     string      public version = "0.1";
     string      public name;
     IERC20Token public stox;                       // Stox ERC20 token
+    PoolPredictionPrizeDistribution     public prizeDistribution;
     //Status      public status;
 
     // Note: operator should close the units sale in his website some time before the actual unitBuyingEndTimeSeconds as the ethereum network
@@ -122,9 +131,13 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
     uint        public winningOutcomeId;
     Outcome[]   public outcomes;
     Unit[]      public units;
-
+    
     // Mapping to see all the units bought for each user and outcome (user address -> outcome id -> unit id[])
     mapping(address => mapping(uint => uint[])) public ownerUnits;
+
+    //mapping(address => mapping(uint => uint)) public ownerAccumulatedTokensPerOutcome;
+
+    mapping(address => mapping(uint => OutcomeUnitTokens)) public ownerAccumulatedTokensPerOutcome;
 
     /*
         @dev constructor
@@ -141,11 +154,13 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
             uint _predictionEndTimeSeconds,
             uint _unitBuyingEndTimeSeconds,
             string _name,
-            IERC20Token _stox)
+            IERC20Token _stox,
+            PoolPredictionPrizeDistribution _prizeDistribution)
             public 
             validAddress(_oracle)
             validAddress(_owner)
             validAddress(_stox)
+            validAddress(_prizeDistribution)
             greaterThanZero(_predictionEndTimeSeconds)
             greaterThanZero(_unitBuyingEndTimeSeconds)
             notEmpty(_name)
@@ -159,6 +174,7 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
         unitBuyingEndTimeSeconds = _unitBuyingEndTimeSeconds;
         name = _name;
         stox = _stox;
+        prizeDistribution = _prizeDistribution;
     }
 
     /*
@@ -268,6 +284,13 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
         units.push(Unit(unitId, _outcomeId, _tokenAmount, false, _owner));
         ownerUnits[_owner][_outcomeId].push(unitId);
 
+        if (ownerAccumulatedTokensPerOutcome[_owner][_outcomeId].doesExist) {
+            ownerAccumulatedTokensPerOutcome[_owner][_outcomeId].tokens = safeAdd(ownerAccumulatedTokensPerOutcome[_owner][_outcomeId].tokens,_tokenAmount); 
+        }
+        else {
+             ownerAccumulatedTokensPerOutcome[_owner][_outcomeId] = OutcomeUnitTokens(_tokenAmount,false,true);
+        }
+        
         assert(stox.transferFrom(_owner, this, _tokenAmount));
         
         UnitBought(_owner, _outcomeId, unitId, _tokenAmount);
@@ -342,9 +365,13 @@ contract PoolPrediction is Ownable, Utils, PredictionStatus {
             unit.isWithdrawn = true;
         }
 
+        userWinTokens = prizeDistribution.calculateWithdrawalAmount(ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcomeId].tokens,winningOutcomeTokens,tokenPool);
+
         if (userWinTokens > 0) {
             stox.transfer(msg.sender, userWinTokens);
         }
+
+        ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcomeId].isWithdrawn = true;
 
         UnitsWithdrawn(msg.sender, userWinTokens);
     }
