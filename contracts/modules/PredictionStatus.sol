@@ -4,7 +4,7 @@ import "../Utils.sol";
 import "../oracles/Oracle.sol";
 import "../token/IERC20Token.sol";
 
-contract PredictionStatus is Utils {
+contract PredictionStatus is Ownable, Utils {
 
     /*
      *  Events
@@ -28,7 +28,7 @@ contract PredictionStatus is Utils {
      *  Enums and Structs
      */
     enum Status {
-        Initializing,       // The status when the prediction is first created. During this stage we define the prediction outcomes.
+        Initializing,       // The status when the prediction is first created. 
         Published,          // The prediction is published and users can now buy units.
         Resolved,           // The prediction is resolved and users can withdraw their units.
         Paused,             // The prediction is paused and users can no longer buy units until the prediction is published again.
@@ -39,6 +39,18 @@ contract PredictionStatus is Utils {
      *  Members
      */
     Status      public status;
+
+    /*
+        @dev constructor
+
+        @param _owner       Prediction owner / operator
+    */
+    function PredictionStatus (address _owner)
+        public
+        Ownable(_owner)
+        {
+            status = Status.Initializing;
+        }
 
     /*
         @dev Allow the prediction owner to publish the prediction
@@ -65,7 +77,7 @@ contract PredictionStatus is Utils {
     /*
         @dev Allow the prediction owner to cancel the prediction.
     */
-    function cancel() {
+    function cancel() public ownerOnly {
         require ((status == Status.Published) ||
             (status == Status.Paused));
         

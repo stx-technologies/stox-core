@@ -97,14 +97,28 @@ contract NewWalletImpl is INewWalletImpl {
             TransferToUserWithdrawalAccount(_token, wallet.userWithdrawalAccount, _amount,  _feesToken, wallet.feesAccount, _fee);   
     }
 
-    function voteOnPoolPrediction(PoolPrediction _prediction, uint _outcome, uint _amount) 
+    /*
+        @dev Vote on a prediction of type Pool
+
+        @param _prediction       Pool prediction to vote on  
+        @param _outcome          The chosen outcome to vote on
+        @param _amount           Amount of tokens to vote on the outcome   
+    */
+    function voteOnPoolPrediction(IERC20Token _token, PoolPrediction _prediction, uint _outcome, uint _amount) 
         public
         validAddress(_prediction) 
         {
+            _token.approve(_prediction, 0);
+            _token.approve(_prediction,_amount);
             _prediction.buyUnit(_amount,_outcome);
             VoteOnPoolPrediction(msg.sender,_prediction, _outcome, _amount);
         }
 
+    /*
+        @dev Withdraw funds from a pool prediction
+
+        @param _prediction       Pool prediction to withdraw from  
+    */
     function withdrawFromPoolPrediction(PoolPrediction _prediction)
         public
         validAddress(_prediction)

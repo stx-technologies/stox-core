@@ -12,34 +12,37 @@ contract UpgradablePredictionFactory is Ownable {
     /*
      * Members
      */
-
-    address relayDispatcher;
-    address newCreatedPredictionAddress; 
-    //address public factory;
+    address predictionFactoryImplRelay;
     
-    function UpgradablePredictionFactory(address _relayDispatcher /*, address _factory*/) 
+    function UpgradablePredictionFactory(address _predictionFactoryImplRelay) 
         public 
         Ownable(msg.sender) 
         {
-            relayDispatcher = _relayDispatcher;
-            //factory = _factory;
+            predictionFactoryImplRelay = _predictionFactoryImplRelay;
     }
-    /*
-    function setFactory(address _factory) public ownerOnly {
-        require ((address(_factory) != address(this)) && (address(_factory) != 0x0));
 
-        factory = _factory;
-    }
+    /*
+        @dev Set a new RelayDispatcher address
+
+        @param _relayDispatcher       PredictionFactoryRelayDispatcher new address
     */
+    function setRelayDispatcher(address _predictionFactoryImplRelay) 
+        public 
+        ownerOnly 
+        {
+            predictionFactoryImplRelay = _predictionFactoryImplRelay;
+    }
+
+    
     /*
         @dev Fallback function to delegate calls to the relay contract
 
     */
     function() {
-        PredictionFactoryRelayDispatcher factoryRelayDispatcher = PredictionFactoryRelayDispatcher(relayDispatcher); 
-        address relay = factoryRelayDispatcher.getPredictionFactoryImplAddress();
+        //PredictionFactoryImplRelay factoryRelayDispatcher = PredictionFactoryRelayDispatcher(relayDispatcher); 
+        //address relay = factoryRelayDispatcher.getPredictionFactoryImplAddress();
         
-        if (!relay.delegatecall(msg.data)) 
+        if (!predictionFactoryImplRelay.delegatecall(msg.data)) 
            revert();
     }
 

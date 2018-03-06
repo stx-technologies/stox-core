@@ -5,7 +5,7 @@ import "../predictions/PoolPrediction.sol";
 contract INewWalletImpl {
     function transferToUserWithdrawalAccount(IERC20Token _token, uint _amount, IERC20Token _feesToken, uint _fee) public;
     function setUserWithdrawalAccount(address _userWithdrawalAccount) public;
-    function voteOnPoolPrediction(PoolPrediction _prediction, uint _outcome, uint _amount) public;
+    function voteOnPoolPrediction(IERC20Token _token, PoolPrediction _prediction, uint _outcome, uint _amount) public;
     function withdrawFromPoolPrediction(PoolPrediction _prediction) public;
     //function approveBuy(IERC20Token _token, address _prediction, uint256 _amount) public {}
 

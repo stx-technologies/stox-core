@@ -72,6 +72,12 @@ library UpgradableSmartWalletLib {
             TransferToBackupAccount(_token, _self.backupAccount, _amount); 
     }
 
+    /*
+        @dev Set the contract address to relay(delegate) fallback functions to 
+
+        @param _self                          Wallet storage
+        @param _relayDispatcher               The contract address to relay(delegate) fallback functions to  
+    */
     function setRelayDispatcher(Wallet storage _self, address _relayDispatcher)
         public
         operatorOnly(_self.operatorAccount)
