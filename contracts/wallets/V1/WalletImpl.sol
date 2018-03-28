@@ -119,9 +119,9 @@ contract WalletImpl is IWalletImpl {
         validAddress(_prediction) 
         {
             _token.approve(_prediction, 0);
-            _token.approve(_prediction,_amount);
-            _prediction.buyUnit(_amount,_outcome);
-            VoteOnPoolPrediction(msg.sender,_prediction, _outcome, _amount);
+            _token.approve(_prediction, _amount);
+            _prediction.placeTokens(_amount, _outcome);
+            VoteOnPoolPrediction(msg.sender, _prediction, _outcome, _amount);
         }
 
     /*
@@ -133,7 +133,8 @@ contract WalletImpl is IWalletImpl {
         public
         validAddress(_prediction)
         {
-            _prediction.withdrawPlacements();
+            _prediction.withdrawPrize();
             WithdrawFromPoolPrediction(msg.sender, _prediction);
         }
 }
+

@@ -37,10 +37,11 @@ contract UpgradablePredictionFactory is Ownable {
         @dev Fallback function to delegate calls to the relay contract
 
     */
-    function() {
+    function() public {
          
         if (!predictionFactoryImplRelay.delegatecall(msg.data)) 
            revert();
     }
 
 }
+

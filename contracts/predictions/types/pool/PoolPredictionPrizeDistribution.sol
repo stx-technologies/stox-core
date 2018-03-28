@@ -1,6 +1,4 @@
 pragma solidity ^0.4.18;
-//import "../../../Ownable.sol";
-//import "../../../Utils.sol";
 import "../../management/PredictionTiming.sol";
 import "./IPoolPredictionPrizeDistribution.sol";
 import "./PoolPredictionPrizeCalculation.sol";
@@ -8,15 +6,11 @@ import "../../../token/IERC20Token.sol";
 
 contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPrizeCalculation, IPoolPredictionPrizeDistribution {
 
-    /*
-     *  Members
-     */
-    //string      public name;
-
+    
     /*
      * Events
      */
-    event TokenPlacementsWithdrawn(address indexed _owner, uint _tokenAmount);
+    event PrizeWithdrawn(address indexed _owner, uint _tokenAmount, IERC20Token _token);
     
 
     /*
@@ -30,33 +24,40 @@ contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPriz
         PredictionTiming(_predictionEndTimeSeconds, _buyingEndTimeSeconds) 
         {}
 
-    function getWithdrawalAmount(PoolPredictionPrizeLib.CalculationMethod _method, 
-                                    uint _ownerWinningTokens, 
-                                    uint _totalWinningTokens, 
-                                    uint _tokenPool) 
-        internal 
-        returns (uint _amount)
-        {
-            return (calculateWithdrawalAmount(_method,_ownerWinningTokens,_totalWinningTokens,_tokenPool));
-        }
-    
+    /*
+        @dev Distribute a prize for a user, by method
+
+        @param _token                                       ERC20token token
+        @param _method                                      Method of calculating prizes
+        @param _ownerTotalTokensPlacements                  Total amount of tokens the owner put on any outcome
+        @param _ownerTotalWinningOutcomeTokensPlacements    Total amount of tokens the owner put on the winning outcome
+        @param _totalWinningOutcomeTokens                   Total amount of tokens all owners put on the winning outcome
+        @param _tokenPool                                   Total amount of tokens put by all owners on all outcomes
+
+    */
     function distributePrizeToUser(IERC20Token _token, 
-                                    PoolPredictionPrizeLib.CalculationMethod _method, 
-                                    uint _ownerWinningTokens, 
-                                    uint _totalWinningTokens, 
+                                    PoolPredictionCalculationMethods.PoolCalculationMethod _method, 
+                                    uint _ownerTotalTokensPlacements,
+                                    uint _ownerTotalWinningOutcomeTokensPlacements, 
+                                    uint _usersTotalWinningOutcomeTokensPlacements, 
                                     uint _tokenPool)
         public
         {
-            uint userWinTokens = 0;
+            require(_ownerTotalTokensPlacements > 0);
 
-            userWinTokens = getWithdrawalAmount(_method, _ownerWinningTokens, _totalWinningTokens, _tokenPool);
+            uint userPrizeTokens = 0;
 
-            if (userWinTokens > 0) {
-                _token.transfer(msg.sender, userWinTokens);
+            userPrizeTokens = calculateWithdrawalAmount(_method,
+                                                        _ownerTotalTokensPlacements,     
+                                                        _ownerTotalWinningOutcomeTokensPlacements,
+                                                        _usersTotalWinningOutcomeTokensPlacements,
+                                                        _tokenPool);
+
+            if (userPrizeTokens > 0) {
+                _token.transfer(msg.sender, userPrizeTokens);
             }
 
-            TokenPlacementsWithdrawn(msg.sender, userWinTokens);
+            PrizeWithdrawn(msg.sender, userPrizeTokens, _token);
         }
-    
-
 }
+

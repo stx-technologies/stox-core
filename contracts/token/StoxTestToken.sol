@@ -112,3 +112,4 @@ contract StoxTestToken is ERC20Token, Ownable {
         return true;
     }
 }
+

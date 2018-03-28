@@ -1,24 +1,38 @@
 pragma solidity ^0.4.18;
-import "../types/Oracle.sol";
-import "./IUpgradableOracleFactory.sol";
+import "../types/MultipleOutcomeOracle.sol";
+import "../types/ScalarOracle.sol";
+import "./IUpgradableOracleFactoryImpl.sol";
 
 /*
     @title OracleFactoryImpl contract - The implementation for the Oracle Factory
  */
-contract OracleFactoryImpl is IUpgradableOracleFactory {
+contract OracleFactoryImpl is IUpgradableOracleFactoryImpl {
 
-    event OracleCreated(address indexed _creator, address indexed _newOracle);
+    event MultipleOutcomeOracleCreated(address indexed _creator, address indexed _newOracle);
+    event ScalarOracleCreated(address indexed _creator, address indexed _newOracle);
 
     function OracleFactoryImpl() public {}
 
     /*
-        @dev Create an Oracle instance
+        @dev Create a Pool Oracle instance
 
         @param _name       Oracle name
     */
-    function createOracle(string _name) public {
-        Oracle newOracle = new Oracle(msg.sender, _name);
+    function createMultipleOutcomeOracle(string _name) public {
+        MultipleOutcomeOracle newOracle = new MultipleOutcomeOracle(msg.sender, _name);
 
-        OracleCreated(msg.sender, address(newOracle));
+        MultipleOutcomeOracleCreated(msg.sender, address(newOracle));
+    }
+
+    /*
+        @dev Create a Scalar Oracle instance
+
+        @param _name       Oracle name
+    */
+    function createScalarOracle(string _name) public {
+        ScalarOracle newOracle = new ScalarOracle(msg.sender, _name);
+
+        ScalarOracleCreated(msg.sender, address(newOracle));
     }
 }
+

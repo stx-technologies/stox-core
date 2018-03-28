@@ -9,13 +9,23 @@ contract PredictionMetaData is PredictionStatus {
     string      public version = "0.1";
     string      public name;
     address     public oracleAddress;       // When the prediction is resolved the oracle will tell the prediction who is the winning outcome
-    uint        public tokenPool;           // Total tokens used to buy units in this prediction
-
+    
     /*
      *  Events
      */
     event PredictionNameChanged(string _newName);
     event OracleChanged(address _oracle);
+
+    /*
+     *  Constructor 
+    */
+    function PredictionMetaData(string _name, address _oracleAddress) 
+        public 
+        {
+            name = _name;
+            oracleAddress = _oracleAddress;
+    }
+
 
     /*
         @dev Allow the prediction owner to change the name

@@ -1,5 +1,5 @@
 pragma solidity ^0.4.18;
-import "./IUpgradableOracleFactory.sol";
+import "./IUpgradableOracleFactoryImpl.sol";
 import "../../Ownable.sol";
 
 /*
@@ -36,10 +36,11 @@ contract UpgradableOracleFactory is Ownable {
         @dev Fallback function to delegate calls to the OracleFactoryImpl relay contract
 
     */
-    function() {
+    function() public {
          
         if (!oracleFactoryImplRelay.delegatecall(msg.data)) 
            revert();
     }
   
 }
+

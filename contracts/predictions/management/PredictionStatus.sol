@@ -1,7 +1,6 @@
 pragma solidity ^0.4.18;
 import "../../Ownable.sol";
 import "../../Utils.sol";
-import "../../oracles/types/Oracle.sol";
 import "../../token/IERC20Token.sol";
 
 contract PredictionStatus is Ownable, Utils {
@@ -12,7 +11,7 @@ contract PredictionStatus is Ownable, Utils {
     event PredictionPublished();
     event PredictionPaused();
     event PredictionCanceled();
-    event PredictionResolved(address indexed _oracle, uint indexed _winningOutcomeId);
+    event PredictionResolved(address indexed _oracle, uint indexed _winningOutcome);
    
     /**
         @dev Check the curren contract status
@@ -55,7 +54,7 @@ contract PredictionStatus is Ownable, Utils {
     /*
         @dev Allow the prediction owner to publish the prediction
     */
-    function publish() {
+    function publish() public {
         require ((status == Status.Initializing) || 
                 (status == Status.Paused));
 
@@ -67,11 +66,11 @@ contract PredictionStatus is Ownable, Utils {
     /*
         @dev Allow the prediction owner to resolve the prediction.
     */
-    function resolve(address _oracle, uint _winningOutcomeId) statusIs(Status.Published) {
+    function resolve(address _oracle, uint _winningOutcome) statusIs(Status.Published) public {
         
         status = Status.Resolved;
 
-        PredictionResolved(_oracle, _winningOutcomeId);
+        PredictionResolved(_oracle, _winningOutcome);
     }
 
     /*
@@ -89,7 +88,7 @@ contract PredictionStatus is Ownable, Utils {
     /*
         @dev Allow the prediction owner to pause the prediction.
     */
-    function pause() statusIs(Status.Published) {
+    function pause() statusIs(Status.Published) public {
         status = Status.Paused;
 
         PredictionPaused();
