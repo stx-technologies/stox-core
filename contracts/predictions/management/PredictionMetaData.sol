@@ -32,7 +32,7 @@ contract PredictionMetaData is PredictionStatus {
 
         @param _newName Prediction name
     */
-    function setPredictionName(string _newName) notEmpty(_newName) external ownerOnly {
+    function setPredictionName(string _newName) notEmptyString(_newName) external ownerOnly {
         name = _newName;
 
         PredictionNameChanged(_newName);

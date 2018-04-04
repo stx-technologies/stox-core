@@ -11,7 +11,7 @@ contract PredictionStatus is Ownable, Utils {
     event PredictionPublished();
     event PredictionPaused();
     event PredictionCanceled();
-    event PredictionResolved(address indexed _oracle, uint indexed _winningOutcome);
+    event PredictionResolved(address indexed _oracle, bytes32 indexed _winningOutcome);
    
     /**
         @dev Check the curren contract status
@@ -54,7 +54,7 @@ contract PredictionStatus is Ownable, Utils {
     /*
         @dev Allow the prediction owner to publish the prediction
     */
-    function publish() public {
+    function publish() public ownerOnly {
         require ((status == Status.Initializing) || 
                 (status == Status.Paused));
 
@@ -66,7 +66,7 @@ contract PredictionStatus is Ownable, Utils {
     /*
         @dev Allow the prediction owner to resolve the prediction.
     */
-    function resolve(address _oracle, uint _winningOutcome) statusIs(Status.Published) public {
+    function resolve(address _oracle, bytes32 _winningOutcome) statusIs(Status.Published) public {
         
         status = Status.Resolved;
 

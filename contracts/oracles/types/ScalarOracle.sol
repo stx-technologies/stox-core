@@ -11,10 +11,15 @@ contract ScalarOracle is Ownable, Utils {
     /*
      *  Events
      */
-    event OutcomeAssigned(address indexed _predictionAddress, uint indexed _outcome);
+    event OutcomeAssigned(address indexed _predictionAddress, int indexed _outcome);
     event PredictionRegistered(address indexed _predictionAddress);
     event PredictionUnregistered(address indexed _predictionAddress);
     event OracleNameChanged(string _newName);
+
+    struct Outcome {
+        int     value;
+        bool    isSet;
+    }
 
     /*
      *  Members
@@ -22,7 +27,7 @@ contract ScalarOracle is Ownable, Utils {
     string                      public version = "0.1";
     string                      public name;
     mapping(address=>bool)      public predictionsRegistered;    // An index of all the predictions registered for this oracle
-    mapping(address=>uint)      public predictionsOutcome;       // Mapping of prediction -> outcomes
+    mapping(address=>Outcome)   public predictionsOutcome;       // Mapping of prediction -> outcomes
 
     /*
         @dev constructor
@@ -30,7 +35,7 @@ contract ScalarOracle is Ownable, Utils {
         @param _owner                       Oracle owner / operator
         @param _name                        Oracle name
     */
-    function ScalarOracle(address _owner, string _name) public notEmpty(_name) Ownable(_owner) {
+    function ScalarOracle(address _owner, string _name) public notEmptyString(_name) Ownable(_owner) {
         name = _name;
     }
 
@@ -69,27 +74,38 @@ contract ScalarOracle is Ownable, Utils {
         @param _prediction  Prediction address to set outcome for
         @param _outcomeId   Winning outcome 
     */
-    function setOutcome (address _prediction, uint _outcome)
+    function setOutcome (address _prediction, int _outcome)
             public 
             validAddress(_prediction)
             ownerOnly {
         
         require(isPredictionRegistered(_prediction));
         
-        predictionsOutcome[_prediction] = _outcome;
+        predictionsOutcome[_prediction] = Outcome(_outcome, true);
         
         OutcomeAssigned(_prediction, _outcome);
     }
 
     /*
-        @dev Returns the outcome id for a specific prediction
+        @dev Returns the outcome for a specific prediction
 
         @param _prediction  Prediction address
 
-        @return             Outcome id
+        @return             Outcome
     */ 
-    function getOutcome(address _prediction) public view returns (uint) {
-        return predictionsOutcome[_prediction];
+    function getOutcome(address _prediction) public view returns (int) {
+        return predictionsOutcome[_prediction].value;
+    }
+
+    /*
+        @dev Returns true if outcome is set already
+
+        @param _prediction  Prediction address
+
+        @return             is outcome set
+    */ 
+    function isOutcomeSet(address _prediction) public view returns (bool) {
+        return predictionsOutcome[_prediction].isSet;
     }
 
     /*
@@ -97,7 +113,7 @@ contract ScalarOracle is Ownable, Utils {
 
         @param _newName New oracle name
     */
-    function setName(string _newName) notEmpty(_newName) external ownerOnly {
+    function setName(string _newName) notEmptyString(_newName) external ownerOnly {
         name = _newName;
         OracleNameChanged(_newName);
     }

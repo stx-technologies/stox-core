@@ -10,8 +10,7 @@ import "../types/pool/PoolPredictionPrizeDistribution.sol";
 contract PoolPredictionFactoryImpl is IPoolPredictionFactoryImpl, Utils {
 
     event PoolPredictionCreated(address indexed _creator, address indexed _newPrediction);
-    //event ScalarPredictionCreated(address indexed _creator, address indexed _newPrediction);
-
+    
     function PoolPredictionFactoryImpl() public {}
 
     /*

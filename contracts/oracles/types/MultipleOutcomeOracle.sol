@@ -11,7 +11,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
     /*
      *  Events
      */
-    event OutcomeAssigned(address indexed _predictionAddress, uint indexed _outcomeId);
+    event OutcomeAssigned(address indexed _predictionAddress, bytes32 indexed _outcomeId);
     event PredictionRegistered(address indexed _predictionAddress);
     event PredictionUnregistered(address indexed _predictionAddress);
     event OracleNameChanged(string _newName);
@@ -22,7 +22,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
     string                      public version = "0.1";
     string                      public name;
     mapping(address=>bool)      public predictionsRegistered;    // An index of all the predictions registered for this oracle
-    mapping(address=>uint)      public predictionsOutcome;       // Mapping of prediction -> outcomes
+    mapping(address=>bytes32)   public predictionsOutcome;       // Mapping of prediction -> outcomes
 
     /*
         @dev constructor
@@ -30,7 +30,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
         @param _owner                       Oracle owner / operator
         @param _name                        Oracle name
     */
-    function MultipleOutcomeOracle(address _owner, string _name) public notEmpty(_name) Ownable(_owner) {
+    function MultipleOutcomeOracle(address _owner, string _name) public notEmptyString(_name) Ownable(_owner) {
         name = _name;
     }
 
@@ -67,19 +67,18 @@ contract MultipleOutcomeOracle is Ownable, Utils {
         method in order to pull the outcome id from the oracle.
 
         @param _prediction  Prediction address to set outcome for
-        @param _outcomeId   Winning outcome id
+        @param _outcomeId   Winning outcome
     */
-    function setOutcome (address _prediction, uint _outcomeId)
+    function setOutcome (address _prediction, bytes32 _outcome)
             public 
             validAddress(_prediction)
-            greaterThanZero(_outcomeId)
             ownerOnly {
         
         require(isPredictionRegistered(_prediction));
         
-        predictionsOutcome[_prediction] = _outcomeId;
+        predictionsOutcome[_prediction] = _outcome;
         
-        OutcomeAssigned(_prediction, _outcomeId);
+        OutcomeAssigned(_prediction, _outcome);
     }
 
     /*
@@ -89,7 +88,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
 
         @return             Outcome id
     */ 
-    function getOutcome(address _prediction) public view returns (uint) {
+    function getOutcome(address _prediction) public view returns (bytes32) {
         return predictionsOutcome[_prediction];
     }
 
@@ -98,7 +97,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
 
         @param _newName New oracle name
     */
-    function setName(string _newName) notEmpty(_newName) external ownerOnly {
+    function setName(string _newName) notEmptyString(_newName) external ownerOnly {
         name = _newName;
         OracleNameChanged(_newName);
     }

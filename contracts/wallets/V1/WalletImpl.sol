@@ -43,7 +43,7 @@ contract WalletImpl is IWalletImpl {
                                             address _feesAccount, 
                                             uint _fee);
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
-    event VoteOnPoolPrediction(address _voter, address _prediction, uint _outcome, uint _amount);
+    event VoteOnPoolPrediction(address _voter, address _prediction, bytes32 _outcome, uint _amount);
     event WithdrawFromPoolPrediction(address _wallet, address _prediction);
 
     /*
@@ -114,7 +114,7 @@ contract WalletImpl is IWalletImpl {
         @param _outcome          The chosen outcome to vote on
         @param _amount           Amount of tokens to vote on the outcome   
     */
-    function voteOnPoolPrediction(IERC20Token _token, PoolPrediction _prediction, uint _outcome, uint _amount) 
+    function voteOnPoolPrediction(IERC20Token _token, PoolPrediction _prediction, bytes32 _outcome, uint _amount) 
         public
         validAddress(_prediction) 
         {

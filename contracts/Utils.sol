@@ -37,8 +37,16 @@ contract Utils {
     /*
         @dev verifies that the string is not empty
     */
-    modifier notEmpty(string _str) {
+    modifier notEmptyString(string _str) {
         require(bytes(_str).length > 0);
+        _;
+    }
+
+    /*
+        @dev verifies that the bytes32 does not represent an empty value
+    */
+    modifier notEmptyBytes(bytes32 _val) {
+        require(_val[0] != 0);
         _;
     }
 

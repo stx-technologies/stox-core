@@ -1,7 +1,11 @@
 const utils = require('./helpers/utils');
+const web3utils = require('web3-utils');
+
 const NewWalletImpl = artifacts.require("./wallets/V1/WalletImpl.sol");
+const NewWalletImpl2 = artifacts.require("./wallets/V2/WalletImpl2.sol");
 const UpgradableSmartWallet = artifacts.require("./wallets/upgradable/UpgradableSmartWallet.sol");
 const INewWalletImpl = artifacts.require("./wallets/V1/IWalletImpl.sol");
+const INewWalletImpl2 = artifacts.require("./wallets/V2/IWalletImpl2.sol");
 const RelayDispatcher = artifacts.require("./wallets/upgradable/RelayDispatcher.sol");
 const ExtendedERC20Token = artifacts.require("./token/ExtendedERC20Token.sol");
 const PoolPrediction = artifacts.require("./predictions/types/pool/PoolPrediction.sol");
@@ -13,7 +17,10 @@ const UpgradableOracleFactory = artifacts.require("./oracles/factory/UpgradableO
 const IUpgradableOracleFactoryImpl = artifacts.require("./oracles/factory/IUpgradableOracleFactoryImpl.sol");
 const OracleFactoryImpl = artifacts.require("./oracles/factory/OracleFactoryImpl.sol");
 const MultipleOutcomeOracle = artifacts.require("./oracles/types/MultipleOutcomeOracle.sol");
-
+const ScalarPrediction = artifacts.require("./predictions/types/scalar/ScalarPrediction.sol");
+const IScalarPredictionFactoryImpl = artifacts.require("./predictions/factory/IScalarPredictionFactoryImpl.sol");
+const ScalarPredictionFactoryImpl = artifacts.require("./predictions/factory/ScalarPredictionFactoryImpl.sol");
+const ScalarOracle = artifacts.require("./oracles/types/ScalarOracle.sol");
 
 let stoxTestToken;
 
@@ -31,7 +38,7 @@ let oracle;
 let walletRelayDispatcher;
 let upgradableSmartWallet;
 let newWalletImpl;
-let newWalletImplAddress;
+let newWalletImpl2;
 let player1UpgradableWallet;
 let iPlayer1UpgradableSmartWallet;
 let player2UpgradableWallet;
@@ -45,6 +52,14 @@ let feesAccount;
 
 function isEventArgValid(arg_value, expected_value){
     return (arg_value == expected_value);
+}
+
+function isEventNumberBytesArgValid(arg_value, expected_value){
+    return (arg_value == web3utils.padRight(web3utils.numberToHex(expected_value),64));
+}
+
+function isEventStringBytesArgValid(arg_value, expected_value){
+    return (arg_value == web3utils.padRight(web3utils.asciiToHex(expected_value),64));
 }
 
 function getLog(result, name, logIndex = 0) {
@@ -90,6 +105,10 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
         upgradablePredictionFactory = await UpgradablePredictionFactory.new(poolPredictionFactoryImpl.address, {from: predictionOperator});
         iPoolPredictionFactoryImpl = IPoolPredictionFactoryImpl.at(upgradablePredictionFactory.address, {from: predictionOperator});
         
+        scalarPredictionFactoryImpl = await ScalarPredictionFactoryImpl.new();
+        upgradablePredictionFactory = await UpgradablePredictionFactory.new(scalarPredictionFactoryImpl.address, {from: predictionOperator});
+        iScalarPredictionFactoryImpl = IScalarPredictionFactoryImpl.at(upgradablePredictionFactory.address, {from: predictionOperator});
+       
         var tomorrow = new Date();
         tomorrow.setDate((new Date).getDate() + 1);
         tommorowInSeconds = Math.round(tomorrow.getTime() / 1000);
@@ -97,6 +116,15 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
 
         await initOracle();
       
+    }
+
+    async function initScalarPrediction(calcType) {
+        let scalarPrediction;
+        await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calcType, {from: predictionOperator}).then(function(result) {
+            scalarPrediction = ScalarPrediction.at(getLogArg(result, "_newPrediction"));
+        });
+        
+        return scalarPrediction;
     }
 
     async function initPrediction(calcType) {
@@ -166,6 +194,29 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
 
       });
       
+      it("Verify set of new wallet impl and new vote type", async function() {
+        await initWallets();
+        await initTokens();
+         
+        newWalletImpl2 = await NewWalletImpl2.new();
+        await walletRelayDispatcher.setSmartWalletImplAddress(newWalletImpl2.address, {from: walletsOperator});
+                
+        await iUpgradableOracleFactoryImpl.createScalarOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
+            oracle = ScalarOracle.at(getLogArg(result, "_newOracle"));
+        });
+        
+        let scalarPrediction = await initScalarPrediction(calculationType.breakEven);
+        await scalarPrediction.publish({from: predictionOperator});
+        
+        iPlayer1UpgradableSmartWallet = INewWalletImpl2.at(player1UpgradableWallet.address);
+
+        tx_result = await iPlayer1UpgradableSmartWallet.voteOnScalarPrediction(stoxTestToken.address, scalarPrediction.address, 100, 500);
+        
+        let event  = getLog(tx_result,"event")
+        assert.equal(event,"VoteOnScalarPrediction")
+        
+      });
+      
       it("Verify upgradable wallet vote on upgradable prediction outcome", async function() {
         await initWallets();
         await initTokens();
@@ -173,7 +224,7 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
         let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
         await poolPrediction.publish({from: predictionOperator});
  
-        await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address, 1, 500);
+        await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address, "o1", 500);
         
         let predictionBalance = await stoxTestToken.balanceOf.call(poolPrediction.address);
         assert.equal(predictionBalance.toNumber(),500);
@@ -187,7 +238,7 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
         let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
         await poolPrediction.publish({from: predictionOperator});
  
-        tx_result = await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address, 1, 500);
+        tx_result = await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address, "o1", 500);
         
         let event  = getLog(tx_result,"event")
         assert.equal(event,"VoteOnPoolPrediction")
@@ -201,13 +252,13 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
         let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
         await poolPrediction.publish({from: predictionOperator});
  
-        tx_result = await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address, 1, 500);
+        tx_result = await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address, "o1", 500);
         
         let event  = getLog(tx_result,"event")
         assert.equal(event,"VoteOnPoolPrediction")
 
         assert.equal(isEventArgValid(getLogArg(tx_result,"_prediction"),poolPrediction.address), true);
-        assert.equal(isEventArgValid(getLogArg(tx_result,"_outcome"),1), true);
+        assert.equal(isEventStringBytesArgValid(getLogArg(tx_result,"_outcome"),"o1"), true);
         assert.equal(isEventArgValid(getLogArg(tx_result,"_amount"),500), true);
   
        });
@@ -215,19 +266,20 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
        it("verify that a user can withdraw funds from a unit", async function() {
         await initWallets();
         await initTokens();
+        await initOracle();
                
         let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
         await poolPrediction.publish({from: predictionOperator});
        
-        await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,1,1000); 
-        await iPlayer2UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,2,2000);
+        await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,"o1",1000); 
+        await iPlayer2UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,"o2",2000);
         
         await poolPrediction.pause({from: predictionOperator});
         await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
        
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
-        await oracle.setOutcome(poolPrediction.address, 1, {from: oracleOperator});
+        await oracle.setOutcome(poolPrediction.address, "o1", {from: oracleOperator});
 
         await poolPrediction.resolve({from: predictionOperator});
         
@@ -245,19 +297,20 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
         it("verify withdraw funds from a unit event fired", async function() {
             await initWallets();
             await initTokens();
+            await initOracle();
                    
             let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
             await poolPrediction.publish({from: predictionOperator});
            
-            await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,1,1000); 
-            await iPlayer2UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,2,2000);
+            await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,"o1",1000); 
+            await iPlayer2UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,"o2",2000);
             
             await poolPrediction.pause({from: predictionOperator});
             await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
            
             await poolPrediction.publish({from: predictionOperator});
             await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
-            await oracle.setOutcome(poolPrediction.address, 1, {from: oracleOperator});
+            await oracle.setOutcome(poolPrediction.address, "o1", {from: oracleOperator});
     
             await poolPrediction.resolve({from: predictionOperator});
             
@@ -271,19 +324,20 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
         it("verify withdraw funds from a unit event arguments correct", async function() {
             await initWallets();
             await initTokens();
+            await initOracle();
                    
             let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
             await poolPrediction.publish({from: predictionOperator});
            
-            await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,1,1000); 
-            await iPlayer2UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,2,2000);
+            await iPlayer1UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,"o1",1000); 
+            await iPlayer2UpgradableSmartWallet.voteOnPoolPrediction(stoxTestToken.address, poolPrediction.address,"o2",2000);
             
             await poolPrediction.pause({from: predictionOperator});
             await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
            
             await poolPrediction.publish({from: predictionOperator});
             await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
-            await oracle.setOutcome(poolPrediction.address, 1, {from: oracleOperator});
+            await oracle.setOutcome(poolPrediction.address, "o1", {from: oracleOperator});
     
             await poolPrediction.resolve({from: predictionOperator});
             
@@ -295,5 +349,5 @@ contract ('UpgradableWalletWithPredictionTest', function(accounts) {
             assert.equal(isEventArgValid(getLogArg(tx_result,"_prediction"),poolPrediction.address), true);
           
         });
-        
+       
 });
