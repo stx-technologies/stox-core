@@ -118,9 +118,9 @@ contract('PoolPrediction', function(accounts) {
 
     it("should throw if prediction name is invalid", async function() {
         await predictionFactory.createPoolPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", {from: predictionOperator}).then(function(result) {
-            poolPrediction = PoolPrediction.at(getLogArg(result, "_newPrediction"));
+               poolPrediction = PoolPrediction.at(getLogArg(result, "_newPrediction"));
         });
-
+                     
         let name = await poolPrediction.name.call();
 
         assert.equal(name, "Test Prediction");

@@ -3,10 +3,9 @@ import "./ERC20Token.sol";
 import "../Ownable.sol";
 
 /**
-    Stox Token implementation
-    Only used for testing purposes
+    Generic implementation of ERC20Token, with several additions.
 */
-contract StoxTestToken is ERC20Token, Ownable {
+contract ExtendedERC20Token is ERC20Token, Ownable {
     bool public transfersEnabled = true;    // true if transfer/transferFrom are enabled, false if not
 
     // triggered when a smart token is deployed - the _token address is defined for forward compatibility, in case we want to trigger the event from a factory
@@ -23,7 +22,7 @@ contract StoxTestToken is ERC20Token, Ownable {
         @param _symbol     token short symbol, minimum 1 character
         @param _decimals   for display purposes only
     */
-    function StoxTestToken(string _name, string _symbol, uint8 _decimals) public ERC20Token(_name, _symbol, _decimals) Ownable(msg.sender) {
+    function ExtendedERC20Token(string _name, string _symbol, uint8 _decimals) public ERC20Token(_name, _symbol, _decimals) Ownable(msg.sender) {
         NewSmartToken(address(this));
     }
 
@@ -54,7 +53,8 @@ contract StoxTestToken is ERC20Token, Ownable {
         public
         ownerOnly
         validAddress(_to)
-        notThis(_to) {
+        notThis(_to) 
+        {
         totalSupply = safeAdd(totalSupply, _amount);
         balanceOf[_to] = safeAdd(balanceOf[_to], _amount);
 
@@ -112,4 +112,3 @@ contract StoxTestToken is ERC20Token, Ownable {
         return true;
     }
 }
-
