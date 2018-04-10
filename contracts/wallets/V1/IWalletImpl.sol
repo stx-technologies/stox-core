@@ -2,6 +2,9 @@ pragma solidity ^0.4.18;
 import "../../token/IERC20Token.sol";
 import "../../predictions/types/pool/PoolPrediction.sol";
 
+/*
+    @title IWalletImpl contract - An interface contract for a wallet implementation.
+*/
 contract IWalletImpl {
     function transferToUserWithdrawalAccount(IERC20Token _token, uint _amount, IERC20Token _feesToken, uint _fee) public;
     function setUserWithdrawalAccount(address _userWithdrawalAccount) public;

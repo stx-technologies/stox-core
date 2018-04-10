@@ -4,6 +4,9 @@ import "./IScalarPredictionPrizeDistribution.sol";
 import "./ScalarPredictionPrizeCalculation.sol";
 import "../../../token/IERC20Token.sol";
 
+/*
+    @title ScalarPredictionPrizeDistribution contract - holds the pool prediction prize distribution implementation
+*/
 contract ScalarPredictionPrizeDistribution is PredictionTiming, ScalarPredictionPrizeCalculation, IScalarPredictionPrizeDistribution {
 
     

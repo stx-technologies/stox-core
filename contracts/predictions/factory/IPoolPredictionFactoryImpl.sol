@@ -2,6 +2,9 @@ pragma solidity ^0.4.18;
 import "../../token/IERC20Token.sol";
 import "../types/pool/PoolPredictionCalculationMethods.sol";
 
+/*
+    @title IPoolPredictionFactoryImpl contract - An interface contract for the pool prediction factory.
+ */
 contract IPoolPredictionFactoryImpl {
     function createPoolPrediction(address _oracle, 
                                     uint _predictionEndTimeSeconds, 

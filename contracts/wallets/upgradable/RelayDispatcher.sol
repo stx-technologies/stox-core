@@ -1,6 +1,9 @@
 pragma solidity ^0.4.18;
 import "../../Ownable.sol";
 
+/*
+    @title RelayDispatcher contract - A contract to hold the wallet implementation address to delegate calls to
+ */
 contract RelayDispatcher is Ownable {
     
     /*

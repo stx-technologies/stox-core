@@ -3,7 +3,10 @@ import "../../token/IERC20Token.sol";
 import "../types/pool/PoolPredictionCalculationMethods.sol";
 import "../types/scalar/ScalarPredictionCalculationMethods.sol";
 
-
+/*
+    @title IUpgradablePredictionFactory contract - An interface contract that allows interfacing with the various
+                                                   prediction types in run time.
+ */
 contract IUpgradablePredictionFactory {
     function createPoolPrediction(address _oracle, 
                                     uint _predictionEndTimeSeconds, 

@@ -2,6 +2,10 @@ pragma solidity ^0.4.18;
 import "../../token/IERC20Token.sol";
 import "./RelayDispatcher.sol";
 
+/*
+    @title UpgradableSmartWalletLib library - A library that holds generic implementations for smart wallet contracts.
+    This way we reduce gas costs upon wallet deployments.
+ */
 library UpgradableSmartWalletLib {
     
     /*

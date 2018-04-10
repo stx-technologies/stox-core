@@ -2,6 +2,9 @@ pragma solidity ^0.4.18;
 import "../../token/IERC20Token.sol";
 import "../types/scalar/ScalarPredictionCalculationMethods.sol";
 
+/*
+    @title IScalarPredictionFactoryImpl contract - An interface contract for the scalar prediction factory.
+ */
 contract IScalarPredictionFactoryImpl {
     function createScalarPrediction(address _oracle, 
                                     uint _predictionEndTimeSeconds, 

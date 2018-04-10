@@ -4,6 +4,10 @@ import "../upgradable/UpgradableSmartWalletLib.sol";
 import "./IWalletImpl.sol";
 import "../../predictions/types/pool/PoolPrediction.sol";
 
+/*
+    @title WalletImpl contract - A wallet implementation. This specific one implements voting on a 
+    pool prediction. 
+*/
 contract WalletImpl is IWalletImpl {
         
     /*

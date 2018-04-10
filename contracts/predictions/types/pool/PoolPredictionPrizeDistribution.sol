@@ -4,15 +4,16 @@ import "./IPoolPredictionPrizeDistribution.sol";
 import "./PoolPredictionPrizeCalculation.sol";
 import "../../../token/IERC20Token.sol";
 
+/*
+    @title PoolPredictionPrizeDistribution contract - holds the pool prediction prize distribution implementation
+*/
 contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPrizeCalculation, IPoolPredictionPrizeDistribution {
-
     
     /*
      * Events
      */
     event PrizeWithdrawn(address indexed _owner, uint _tokenAmount, IERC20Token _token);
     
-
     /*
         @dev constructor
 

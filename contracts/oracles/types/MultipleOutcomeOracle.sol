@@ -3,7 +3,7 @@ import "../../Ownable.sol";
 import "../../Utils.sol";
 
 /*
-    @title Oracle contract - Basic oracle implementation.
+    @title Multiple Outcome Oracle contract - supporting multiple outcome pool predictions.
     The oracle can register predictions and set their outcomes.
  */
 contract MultipleOutcomeOracle is Ownable, Utils {
@@ -86,7 +86,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
 
         @param _prediction  Prediction address
 
-        @return             Outcome id
+        @return             Outcome
     */ 
     function getOutcome(address _prediction) public view returns (bytes32) {
         return predictionsOutcome[_prediction];

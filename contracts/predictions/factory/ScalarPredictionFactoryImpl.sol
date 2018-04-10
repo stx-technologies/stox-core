@@ -5,12 +5,18 @@ import "../../token/IERC20Token.sol";
 import "../types/scalar/ScalarPredictionPrizeDistribution.sol";
 
 /*
-    @title PredictionFactoryImpl contract - The implementation for the Prediction Factory
+    @title ScalarPredictionFactoryImpl contract - The implementation for the Scalar Prediction Factory
  */
 contract ScalarPredictionFactoryImpl is IScalarPredictionFactoryImpl, Utils {
 
+    /*
+        Events
+    */
     event ScalarPredictionCreated(address indexed _creator, address indexed _newPrediction);
 
+    /*
+        Constructor
+    */
     function ScalarPredictionFactoryImpl() public {}
     
     /*

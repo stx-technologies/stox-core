@@ -3,6 +3,9 @@ import "../../Ownable.sol";
 import "../../Utils.sol";
 import "../../token/IERC20Token.sol";
 
+/*
+    @title PredictionStatus contract - holds prediction status and transitions.
+*/
 contract PredictionStatus is Ownable, Utils {
 
     /*

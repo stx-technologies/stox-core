@@ -2,6 +2,9 @@ pragma solidity ^0.4.18;
 import "../../../Utils.sol";   
 import "./IScalarPredictionPrizeCalculation.sol";
 
+/*
+    @title ScalarPredictionPrizeCalculation contract - holds the pool prediction prize calculation implementation
+*/
 contract ScalarPredictionPrizeCalculation is Utils, IScalarPredictionPrizeCalculation {
 
      

@@ -1,6 +1,9 @@
 pragma solidity ^0.4.18;
 import "./ScalarPredictionCalculationMethods.sol";
 
+/*
+    @title IScalarPredictionPrizeCalculation contract - An interface contract for the scalar prediction prize calculation.
+*/
 contract IScalarPredictionPrizeCalculation {
     
     function calculateWithdrawalAmount(ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 

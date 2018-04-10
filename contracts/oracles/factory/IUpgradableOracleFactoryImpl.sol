@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 /*
-    @title IOracleFactoryImpl contract - A interface contract for the oracles factory.
+    @title IUpgradableOracleFactoryImpl contract - An interface contract for the upgradable oracles factory.
  */
 contract IUpgradableOracleFactoryImpl {
     function createMultipleOutcomeOracle(string _name) public;

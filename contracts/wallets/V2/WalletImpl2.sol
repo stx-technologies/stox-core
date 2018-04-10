@@ -4,6 +4,10 @@ import "../upgradable/UpgradableSmartWalletLib.sol";
 import "./IWalletImpl2.sol";
 import "../../predictions/types/scalar/ScalarPrediction.sol";
 
+/*
+    @title WalletImpls contract - A wallet implementation. This specific one implements voting on a 
+    scalar prediction. 
+*/
 contract WalletImpl2 is IWalletImpl2 {
         
     /*

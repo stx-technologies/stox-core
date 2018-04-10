@@ -3,6 +3,10 @@ import "./UpgradableSmartWalletLib.sol";
 import "./RelayDispatcher.sol";
 import "../../token/IERC20Token.sol";
 
+/*
+    @title UpgradableSmartWallet contract - An upgradable smart wallet implemenation. Calls to the wallet implementation
+    are delegated through the set Relay Dispatcher
+ */
 contract UpgradableSmartWallet {
 
     /*
@@ -26,18 +30,6 @@ contract UpgradableSmartWallet {
             wallet.initUpgradableSmartWallet(_backupAccount, _operator, _feesAccount, _relayDispatcher);
     }
 
-    /*
-        @dev Let the token approve the prediction to transfer funds from this wallet
-
-        @param _token               The ERC20 token the owner withdraws from 
-        @param _prediction          The prediction to give approval to 
-        @param _amount              Amount to approve for transfer from this wallet to _prediction  
-    
-    function approvePredictionBuying(IERC20Token _token, address _prediction, uint256 _amount) public returns (bool) {
-        return _token.approve(_prediction,_amount);
-    }
-    */
-    
     /*
         @dev Withdraw funds to a backup account. 
 

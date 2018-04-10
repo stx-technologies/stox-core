@@ -2,6 +2,9 @@ pragma solidity ^0.4.18;
 import "./PoolPredictionCalculationMethods.sol";
 import "../../../token/IERC20Token.sol";
 
+/*
+    @title IPoolPredictionPrizeDistribution contract - An interface contract for the pool prediction prize distribution.
+*/
 contract IPoolPredictionPrizeDistribution {
     function distributePrizeToUser(IERC20Token _token, 
                                     PoolPredictionCalculationMethods.PoolCalculationMethod _method, 

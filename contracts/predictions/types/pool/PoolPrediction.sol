@@ -33,8 +33,7 @@ import "../../management/PredictionMetaData.sol";
     User D -> 0 tokens
  */
 contract PoolPrediction is PoolPredictionPrizeDistribution {
-
-    
+   
     /*
      *  Events
      */
@@ -53,18 +52,16 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     }
     
     /*
-    struct Outcome {
-        uint    id;         // Id will start at 1, and increase by 1 for every new outcome
-        bytes32 value;           
-        uint    tokens;     // Total tokens used to buy units for this outcome
-    }
-    */
+     *  Enum and Structs
+     */
 
+    // Holds user's tokens amount 
     struct UserTokens {
         uint    tokens;
         bool    hasWithdrawn;
     }
 
+    // Holds outcome's tokens amount
     struct OutcomeTokens {
         uint    tokens;
         bool    doesExist;
@@ -84,9 +81,8 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     // Mapping to see all the total tokens bought per outcome, per user (user address -> outcome -> OutcomeTokens)
     mapping(address => mapping(bytes32 => OutcomeTokens)) public ownerAccumulatedTokensPerOutcome;
 
+    // Mapping to see all tokens placed by a user (user address -> UserTokens)
     mapping(address => UserTokens) public ownerTotalTokenPlacements;
-
-    
 
     /*
         @dev constructor
@@ -125,11 +121,9 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     /*
         @dev Allow the prediction owner to change add a new outcome to the prediction
 
-        @param _name Outcome name
+        @param _value   Outcome value
     */
     function addOutcome(bytes32 _value) public ownerOnly notEmptyBytes(_value) statusIs(Status.Initializing) {
-        //uint outcomeId = safeAdd(outcomes.length, 1);
-        //outcomes.push(Outcome(outcomeId, _value, 0));
         outcomes.push(_value);
         outcomesTokens[_value].doesExist = true;
         
@@ -186,8 +180,8 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
         Before calling placeTokens the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
-        @param _tokenAmount The amount of tokens invested in this outcome
-        @param _outcomeId   The outcome the user predicts.
+        @param _tokenAmount     The amount of tokens invested in this outcome
+        @param _outcome         The outcome the user predicts.
     */
     function placeTokens(uint _tokenAmount, bytes32 _outcome) external  {
         placeTokensFor(msg.sender, _tokenAmount, _outcome);
@@ -210,10 +204,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     
     /*
         @dev After the prediction is resolved the user can withdraw tokens from his winning outcomes
-        Note - currently, the tokenPool is not updated, since we do not know here what the prize 
-        distribution would be.
-        
-     */
+    */
     function withdrawPrize() public statusIs(Status.Resolved) {
         require((ownerTotalTokenPlacements[msg.sender].tokens > 0) &&
                 (!ownerTotalTokenPlacements[msg.sender].hasWithdrawn));
@@ -229,7 +220,6 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
 
         ownerTotalTokenPlacements[msg.sender].hasWithdrawn = true;
     }
-
     
     /*
         @dev Returns the amount of tokens a user can withdraw from his winning outcome after the prediction is resolved
@@ -247,13 +237,12 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
                                             winningOutcomeTokens, 
                                             tokenPool));
     }
-
         
     /*
         @dev Allow to prediction owner / operator to cancel the user's placements and refund the tokens.
 
         @param _owner       Placements owner
-        @param _outcomeId   Outcome to refund
+        @param _outcome     Outcome to refund
     */
     function refundUser(address _owner, bytes32 _outcome) public ownerOnly {
         require ((status != Status.Resolved) &&
@@ -261,7 +250,6 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
         
         performRefund(_owner, _outcome);
     }
-
    
     /*
         @dev Allow the user to cancel his placements and refund the tokens he invested.
@@ -281,7 +269,6 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
         @param _owner       Placements owner
         @param _outcomeId   Outcome to refund
     */
-
     function performRefund(address _owner, bytes32 _outcome) private {
         require((tokenPool > 0) &&
                 hasTokenPlacements(_owner, _outcome));
@@ -312,22 +299,10 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     }
 
     /*
-        @dev Returns true if the user's units of an outcome are all withdrawn
-
-        @param _owner       Placements owner
-        @param _outcomeId   Outcome id
-
-        @return             true if the user's units  on an outcome are all withdrawn
-    
-    function areTokenPlacementsWithdrawn(address _owner, bytes32 _outcome) private view returns(bool) {
-        return (ownerAccumulatedTokensPerOutcome[_owner][_outcome].isWithdrawn);
-    }
-    */
-    /*
         @dev Returns true if the user bought units of a specific outcome
 
         @param _owner       Placements owner
-        @param _outcomeId   Outcome id
+        @param _outcome     Outcome id
 
         @return             true if the user bought units on a specific outcome
     */

@@ -3,8 +3,9 @@ import "./IUpgradableOracleFactoryImpl.sol";
 import "../../Ownable.sol";
 
 /*
-    @title OracleFactory contract - A factory contract for generating oracles.
-    It holds a factory interface object so we can update the oracle code without deploying a new oracle factory to the ethereum network.
+    @title UpgradableOracleFactory contract - A factory contract for generating oracles.
+    Holds a reference to the desired type of Oracle factory implementation.
+    Eevry call to this that factory is delegated via this contract. 
  */
 contract UpgradableOracleFactory is Ownable {
     

@@ -4,6 +4,11 @@ import "../../../token/IERC20Token.sol";
 import "./ScalarPredictionPrizeDistribution.sol";
 import "../../management/PredictionMetaData.sol";
 
+/**
+    @title Scalar prediction contract - Scalar predictions distributes tokens between all winners according to
+    the distribution (calculation) method. The prediction winning outcome is decided by the oracle and can be any single integer.
+*/
+
 contract ScalarPrediction is ScalarPredictionPrizeDistribution {
 
     
@@ -13,17 +18,15 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     event TokensPlacedOnOutcome(address indexed _owner, int indexed _outcome, uint _tokenAmount);
     event UserRefunded(address indexed _owner, int _outcome, uint _tokenAmount);
 
+    /*
+     *  Enum and Structs
+     */
+
+    // Holds user's tokens amount 
     struct UserTokens {
         uint    tokens;
         bool    hasWithdrawn;
     }
-
-    /*
-    struct OutcomeTokens {
-        uint    tokens;
-        bool    isWithdrawn;
-    }
-    */
 
     /*
      *  Members
@@ -36,6 +39,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     // Mapping to see all the total tokens bought per outcome, per user (user address -> outcome -> tokens)
     mapping(address => mapping(int => uint)) public ownerAccumulatedTokensPerOutcome;
 
+    // Mapping to see all tokens placed by a user (user address -> UserTokens)
     mapping(address => UserTokens) public ownerTotalTokenPlacements;
 
     /*
@@ -78,9 +82,9 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         Before calling placeTokensFor the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
-        @param _owner       The owner
-        @param _tokenAmount The amount of tokens invested in this outcome
-        @param _outcomeId   The outcome the user predicts.
+        @param _owner           The owner
+        @param _tokenAmount     The amount of tokens invested in this outcome
+        @param _outcome         The outcome the user predicts.
     */
     function placeTokensFor(address _owner, uint _tokenAmount, int _outcome)
             public
@@ -111,8 +115,8 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         Before calling placeTokens the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
-        @param _tokenAmount The amount of tokens invested on this outcome
-        @param _outcomeId   The outcome the user predicts.
+        @param _tokenAmount     The amount of tokens invested on this outcome
+        @param _outcome         The outcome the user predicts.
     */
     function placeTokens(uint _tokenAmount, int _outcome) external  {
         placeTokensFor(msg.sender, _tokenAmount, _outcome);
@@ -170,8 +174,8 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     /*
         @dev Allow to prediction owner / operator to cancel the user's placements and refund the tokens.
 
-        @param _owner       Placements owner
-        @param _outcomeId   Outcome to refund
+        @param _owner           Placements owner
+        @param _outcome         Outcome to refund
     */
     function refundUser(address _owner, int _outcome) public ownerOnly {
         require ((status != Status.Resolved) &&
@@ -185,7 +189,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         @dev Allow the user to cancel his placements and refund the tokens he invested.
         Can be called only after the prediction is canceled.
 
-        @param _outcomeId   Outcome to refund
+        @param _outcome     Outcome to refund
     */
     function getRefund(int _outcome) public statusIs(Status.Canceled) {
         require(ownerAccumulatedTokensPerOutcome[msg.sender][_outcome] > 0);
@@ -197,7 +201,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         @dev Refund a specific user's token placements and cancel them
 
         @param _owner       Placements owner
-        @param _outcomeId   Outcome to refund
+        @param _outcome     Outcome to refund
     */
 
     function performRefund(address _owner, int _outcome) private {
@@ -218,23 +222,10 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     }
 
     /*
-        @dev Returns true if the user's units of an outcome are all withdrawn
-
-        @param _owner       Placements owner
-        @param _outcomeId   Outcome id
-
-        @return             true if the user's units  on an outcome are all withdrawn
-    
-    function areTokenPlacementsWithdrawn(address _owner, int _outcome) private view returns(bool) {
-        return (ownerAccumulatedTokensPerOutcome[_owner][_outcome].isWithdrawn);
-    }
-    */
-
-    /*
         @dev Returns true if the user bought units of a specific outcome
 
         @param _owner       Placements owner
-        @param _outcomeId   Outcome id
+        @param _outcome     Outcome 
 
         @return             true if the user bought units on a specific outcome
     */

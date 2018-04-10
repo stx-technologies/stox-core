@@ -3,7 +3,7 @@ import "../../Ownable.sol";
 import "../../Utils.sol";
 
 /*
-    @title Oracle contract - Basic oracle implementation.
+    @title Scalar Oracle contract - supporting scalar type predictions.
     The oracle can register predictions and set their outcomes.
  */
 contract ScalarOracle is Ownable, Utils {
@@ -16,6 +16,9 @@ contract ScalarOracle is Ownable, Utils {
     event PredictionUnregistered(address indexed _predictionAddress);
     event OracleNameChanged(string _newName);
 
+    /*
+     *  Enum and Structs
+     */
     struct Outcome {
         int     value;
         bool    isSet;
@@ -72,7 +75,7 @@ contract ScalarOracle is Ownable, Utils {
         method in order to pull the outcome  from the oracle.
 
         @param _prediction  Prediction address to set outcome for
-        @param _outcomeId   Winning outcome 
+        @param _outcome     Winning outcome 
     */
     function setOutcome (address _prediction, int _outcome)
             public 

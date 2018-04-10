@@ -1,6 +1,9 @@
 pragma solidity ^0.4.18;
 import "./PredictionMetaData.sol";
 
+/*
+    @title PredictionTiming contract - holds functions controling chnages in prediction timing.
+*/
 contract PredictionTiming is PredictionMetaData {
 
     // Note: operator should close the units sale in his website some time before the actual unitBuyingEndTimeSeconds as the ethereum network

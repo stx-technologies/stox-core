@@ -2,6 +2,9 @@ pragma solidity ^0.4.18;
 import "./ScalarPredictionCalculationMethods.sol";
 import "../../../token/IERC20Token.sol";
 
+/*
+    @title IScalarPredictionPrizeDistribution contract - An interface contract for the scalar prediction prize distribution.
+*/
 contract IScalarPredictionPrizeDistribution {
     function distributePrizeToUser(IERC20Token _token, 
                                     ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 

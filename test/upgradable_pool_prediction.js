@@ -138,26 +138,45 @@ contract('PoolPrediction', function(accounts) {
             'predictions/types/pool/PoolPrediction.sol': fs.readFileSync('../stox-core/contracts/predictions/types/pool/PoolPrediction.sol', 'utf8'),
             'predictions/types/pool/PoolPredictionCalculationMethods.sol': fs.readFileSync('../stox-core/contracts/predictions/types/pool/PoolPredictionCalculationMethods.sol', 'utf8'),
             'predictions/types/pool/PoolPredictionPrizeCalculation.sol': fs.readFileSync('../stox-core/contracts/predictions/types/pool/PoolPredictionPrizeCalculation.sol', 'utf8'),
+            'predictions/types/scalar/ScalarPredictionCalculationMethods.sol': fs.readFileSync('../stox-core/contracts/predictions/types/scalar/ScalarPredictionCalculationMethods.sol', 'utf8'),
             'predictions/types/pool/PoolPredictionPrizeDistribution.sol': fs.readFileSync('../stox-core/contracts/predictions/types/pool/PoolPredictionPrizeDistribution.sol', 'utf8'),
-            'predictions/factory/IUpgradablePredictionFactoryImpl.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/IUpgradablePredictionFactoryImpl.sol', 'utf8'),
+            'predictions/factory/IUpgradablePredictionFactory.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/IUpgradablePredictionFactory.sol', 'utf8'),
+            'predictions/factory/UpgradablePredictionFactory.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/UpgradablePredictionFactory.sol', 'utf8'),
             'oracles/types/MultipleOutcomeOracle.sol': fs.readFileSync('../stox-core/contracts/oracles/types/MultipleOutcomeOracle.sol', 'utf8'),
             'token/IERC20Token.sol': fs.readFileSync('../stox-core/contracts/token/IERC20Token.sol', 'utf8'),
             'Ownable.sol': fs.readFileSync('../stox-core/contracts/Ownable.sol', 'utf8'),
             'Utils.sol': fs.readFileSync('../stox-core/contracts/Utils.sol', 'utf8'),
-            'predictions/factory/PredictionFactoryImpl.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/PredictionFactoryImpl.sol', 'utf8')
+            'predictions/factory/PoolPredictionFactoryImpl.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/PoolPredictionFactoryImpl.sol', 'utf8'),
+            'predictions/factory/IPoolPredictionFactoryImpl.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/IPoolPredictionFactoryImpl.sol', 'utf8')
             };
         
             // Compile the source code
         let output = await solc.compile({sources: input}, 1);
-        console.log({output})
-        let abi = await output.contracts['predictions/factory/PredictionFactoryImpl.sol:PredictionFactoryImpl'].interface;
-        let bytecode = await '0x' + output.contracts['predictions/factory/PredictionFactoryImpl.sol:PredictionFactoryImpl'].bytecode;
         
+        let abi = await output.contracts['predictions/factory/UpgradablePredictionFactory.sol:UpgradablePredictionFactory'].interface;
+        let bytecode = await '0x' + output.contracts['predictions/factory/UpgradablePredictionFactory.sol:UpgradablePredictionFactory'].bytecode;
         let deployed = await web3.eth.contract(JSON.parse(abi));
         let contractData = await deployed.new.getData({data: bytecode});
         let gasEstimate = await web3.eth.estimateGas({data: contractData});
 
-        return gasEstimate;
+        console.log("UpgradablePredictionFactory gas: " + gasEstimate); 
+
+        let poolAbi = await output.contracts['predictions/factory/PoolPredictionFactoryImpl.sol:PoolPredictionFactoryImpl'].interface;
+        let poolBytecode = await '0x' + output.contracts['predictions/factory/PoolPredictionFactoryImpl.sol:PoolPredictionFactoryImpl'].bytecode;
+        let poolDeployed = await web3.eth.contract(JSON.parse(poolAbi));
+        let poolContractData = await poolDeployed.new.getData({data: poolBytecode});
+        let poolGasEstimate = await web3.eth.estimateGas({data: poolContractData});
+        console.log("PoolPredictionFactoryImpl gas: " + poolGasEstimate); 
+        
+        let createPoolPrediction_gasEstimate = await iPoolPredictionFactoryImpl.createPoolPrediction.estimateGas(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
+        console.log("CreatePoolPrediction gas: " + createPoolPrediction_gasEstimate);
+
+        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        await poolPrediction.publish({from: predictionOperator});
+        await initPlayers(poolPrediction.address);
+        let placeTokens_gasEstimate =  await poolPrediction.placeTokens.estimateGas(1000, 100, {from: player1});
+        console.log("Place tokens on pool prediction outcome gas: " + placeTokens_gasEstimate);
+
     }
 
     before(async function() {
@@ -168,18 +187,20 @@ contract('PoolPrediction', function(accounts) {
         upgradableOracleFactory = await UpgradableOracleFactory.new(oracleFactoryImpl.address, {from: oracleOperator});
         iUpgradableOracleFactoryImpl = IUpgradableOracleFactoryImpl.at(upgradableOracleFactory.address, {from: oracleOperator});
         
-        //console.log("gas: " + await checkGas());
+       
                 
         poolPredictionFactoryImpl = await PoolPredictionFactoryImpl.new();
         upgradablePredictionFactory = await UpgradablePredictionFactory.new(poolPredictionFactoryImpl.address, {from: predictionOperator});
         iPoolPredictionFactoryImpl = IPoolPredictionFactoryImpl.at(upgradablePredictionFactory.address, {from: predictionOperator});
-        
+                
         var tomorrow = new Date();
         tomorrow.setDate((new Date).getDate() + 1);
         tommorowInSeconds = Math.round(tomorrow.getTime() / 1000);
         nowInSeconds = Math.round((new Date()).getTime() / 1000);
 
         await initOracle();
+        
+        await checkGas();
         
       });
     
@@ -192,7 +213,7 @@ contract('PoolPrediction', function(accounts) {
 
         assert.equal(name, "Test Prediction");
     });
-   
+    
     it("should throw if oracle address is invalid", async function() {
         try {
             await iPoolPredictionFactoryImpl.createPoolPrediction(0, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
@@ -1216,4 +1237,5 @@ contract('PoolPrediction', function(accounts) {
         assert.equal(predictionTokens, 0);
         
     });
+    
 });

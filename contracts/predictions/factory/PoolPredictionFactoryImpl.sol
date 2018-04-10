@@ -5,12 +5,18 @@ import "../../token/IERC20Token.sol";
 import "../types/pool/PoolPredictionPrizeDistribution.sol";
 
 /*
-    @title PredictionFactoryImpl contract - The implementation for the Prediction Factory
+    @title PoolPredictionFactoryImpl contract - The implementation for the Pool Prediction Factory
  */
 contract PoolPredictionFactoryImpl is IPoolPredictionFactoryImpl, Utils {
 
+    /*
+        Events
+    */
     event PoolPredictionCreated(address indexed _creator, address indexed _newPrediction);
     
+    /*
+        @dev constructor
+    */
     function PoolPredictionFactoryImpl() public {}
 
     /*

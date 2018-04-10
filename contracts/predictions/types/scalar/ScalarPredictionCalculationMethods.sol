@@ -1,8 +1,11 @@
 pragma solidity ^0.4.18;
 
+/*
+    @title PoolPredictionCalculationMethods contract - holds an enum of calculation options
+*/
 contract ScalarPredictionCalculationMethods {
 
     enum ScalarCalculationMethod {
-        breakEven
+        breakEven //the user gets what he placed, no matter win or lose
     }
 }

@@ -1,6 +1,9 @@
 pragma solidity ^0.4.18;
 import "./PredictionStatus.sol";
 
+/*
+    @title PredictionMetaData contract - holds generic data for a prediction.
+*/
 contract PredictionMetaData is PredictionStatus {
 
     /*
