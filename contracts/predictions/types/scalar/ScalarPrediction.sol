@@ -164,10 +164,10 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     */ 
     function calculateUserWithdrawAmount(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         
-        return (calculateWithdrawalAmount(withdrawCalculationMethod, 
-                                            ownerTotalTokenPlacements[_owner].tokens, 
-                                            ownerAccumulatedTokensPerOutcome[_owner][winningOutcome], 
-                                            tokenPool));
+        return (calculatePrizeAmount(withdrawCalculationMethod, 
+                                     ownerTotalTokenPlacements[_owner].tokens, 
+                                     ownerAccumulatedTokensPerOutcome[_owner][winningOutcome], 
+                                     tokenPool));
     
     }
 
@@ -213,7 +213,6 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         if (refundAmount > 0) {
             tokenPool = safeSub(tokenPool, refundAmount);
             ownerTotalTokenPlacements[_owner].tokens = safeSub(ownerTotalTokenPlacements[_owner].tokens, refundAmount);
-            //ownerAccumulatedTokensPerOutcome[_owner][_outcome].isWithdrawn = true;
             ownerAccumulatedTokensPerOutcome[_owner][_outcome] = 0;
             stox.transfer(_owner, refundAmount); // Refund the user
         }

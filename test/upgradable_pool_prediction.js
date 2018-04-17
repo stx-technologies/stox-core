@@ -186,9 +186,7 @@ contract('PoolPrediction', function(accounts) {
         oracleFactoryImpl = await OracleFactoryImpl.new();
         upgradableOracleFactory = await UpgradableOracleFactory.new(oracleFactoryImpl.address, {from: oracleOperator});
         iUpgradableOracleFactoryImpl = IUpgradableOracleFactoryImpl.at(upgradableOracleFactory.address, {from: oracleOperator});
-        
-       
-                
+                       
         poolPredictionFactoryImpl = await PoolPredictionFactoryImpl.new();
         upgradablePredictionFactory = await UpgradablePredictionFactory.new(poolPredictionFactoryImpl.address, {from: predictionOperator});
         iPoolPredictionFactoryImpl = IPoolPredictionFactoryImpl.at(upgradablePredictionFactory.address, {from: predictionOperator});
@@ -203,6 +201,17 @@ contract('PoolPrediction', function(accounts) {
         await checkGas();
         
       });
+    
+    it("verify correct number of outcomes returned from get function", async function() {
+        let poolPrediction = await initPrediction(calculationType.breakEven);
+        await poolPrediction.addOutcome(100, {from: predictionOperator});
+        await poolPrediction.addOutcome(200, {from: predictionOperator});
+        await poolPrediction.addOutcome("300", {from: predictionOperator});
+        
+        let numberOfOutcomes = await poolPrediction.getNumberOfOutcomes();
+
+        assert.equal(numberOfOutcomes,3);
+    });  
     
     it("should throw if prediction name is invalid", async function() {
         await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator}).then(function(result) {
@@ -748,7 +757,7 @@ contract('PoolPrediction', function(accounts) {
         tx_result = await poolPrediction.withdrawPrize({from: player1});
 
         let event  = getLog(tx_result,"event")
-        assert.equal(event,"PrizeWithdrawn")
+        assert.equal(event,"PrizeDistributed")
     });
 
     it ("verify place tokens event fired", async function() {
@@ -808,7 +817,7 @@ contract('PoolPrediction', function(accounts) {
         tx_result = await poolPrediction.withdrawPrize({from: player1});
 
         let event  = getLog(tx_result,"event")
-        assert.equal(event,"PrizeWithdrawn")
+        assert.equal(event,"PrizeDistributed")
 
         assert.equal(isEventArgValid(getLogArg(tx_result,"_tokenAmount"),1500), true);
         

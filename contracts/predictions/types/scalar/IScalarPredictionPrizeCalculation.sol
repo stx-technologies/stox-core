@@ -6,7 +6,7 @@ import "./ScalarPredictionCalculationMethods.sol";
 */
 contract IScalarPredictionPrizeCalculation {
     
-    function calculateWithdrawalAmount(ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
+    function calculatePrizeAmount(ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
                                         uint _ownerTotalTokensPlacements,
                                         uint _ownerTotalWinningOutcomeTokensPlacements, 
                                         uint _tokenPool)

@@ -13,7 +13,7 @@ contract ScalarPredictionPrizeDistribution is PredictionTiming, ScalarPrediction
     /*
      * Events
      */
-    event PrizeWithdrawn(address indexed _owner, uint _tokenAmount, IERC20Token _token);
+    event PrizeDistributed(address indexed _owner, uint _tokenAmount, IERC20Token _token);
     
 
     /*
@@ -49,15 +49,17 @@ contract ScalarPredictionPrizeDistribution is PredictionTiming, ScalarPrediction
 
             uint userPrizeTokens = 0;
 
-            userPrizeTokens = calculateWithdrawalAmount(_method,
-                                                        _ownerTotalTokensPlacements,     
-                                                        _ownerTotalWinningOutcomeTokensPlacements,
-                                                        _tokenPool);
+            userPrizeTokens = calculatePrizeAmount(_method,
+                                                   _ownerTotalTokensPlacements,     
+                                                   _ownerTotalWinningOutcomeTokensPlacements,
+                                                   _tokenPool);
 
             if (userPrizeTokens > 0) {
                 _token.transfer(msg.sender, userPrizeTokens);
+            } else {
+                revert();
             }
 
-            PrizeWithdrawn(msg.sender, userPrizeTokens, _token);
+            PrizeDistributed(msg.sender, userPrizeTokens, _token);
         }
 }
