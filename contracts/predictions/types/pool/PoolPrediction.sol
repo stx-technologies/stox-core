@@ -39,7 +39,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
      */
     event TokensPlacedOnOutcome(address indexed _owner, bytes32 indexed _outcome, uint _tokenAmount);
     event UserRefunded(address indexed _owner, bytes32 _outcome, uint _tokenAmount);
-    event OutcomeAdded(bytes32 indexed _value);
+    event OutcomeAdded(bytes32 indexed _id);
 
     /**
         @dev Check if the prediction has this outcome id
@@ -62,7 +62,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     }
 
     // Holds outcome's tokens amount
-    struct OutcomeTokens {
+    struct OutcomeProperties {
         uint    tokens;
         bool    doesExist;
     }
@@ -74,12 +74,12 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     bytes32                                                     public winningOutcome;
     PoolPredictionCalculationMethods.PoolCalculationMethod      public withdrawCalculationMethod;
     bytes32[]                                                   public outcomes;            // Allows monitoring general existence of outcomes
-    mapping(bytes32 => OutcomeTokens)                           public outcomesTokens;      // Per outcome data
+    mapping(bytes32 => OutcomeProperties)                       public outcomesTokens;      // Per outcome data
     uint                                                        public tokenPool;           // Total tokens used to buy units in this prediction
 
     
-    // Mapping to see all the total tokens bought per outcome, per user (user address -> outcome -> OutcomeTokens)
-    mapping(address => mapping(bytes32 => OutcomeTokens)) public ownerAccumulatedTokensPerOutcome;
+    // Mapping to see all the total tokens bought per outcome, per user (user address -> outcome -> OutcomeProperties)
+    mapping(address => mapping(bytes32 => OutcomeProperties)) public ownerAccumulatedTokensPerOutcome;
 
     // Mapping to see all tokens placed by a user (user address -> UserTokens)
     mapping(address => UserTokens) public ownerTotalTokenPlacements;
@@ -121,13 +121,13 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     /*
         @dev Allow the prediction owner to change add a new outcome to the prediction
 
-        @param _value   Outcome value
+        @param _id   Outcome value
     */
-    function addOutcome(bytes32 _value) public ownerOnly notEmptyBytes(_value) statusIs(Status.Initializing) {
-        outcomes.push(_value);
-        outcomesTokens[_value].doesExist = true;
+    function addOutcome(bytes32 _id) public ownerOnly notEmptyBytes(_id) statusIs(Status.Initializing) {
+        outcomes.push(_id);
+        outcomesTokens[_id].doesExist = true;
         
-        OutcomeAdded(_value);
+        OutcomeAdded(_id);
     }
 
     /*
@@ -166,7 +166,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
             ownerAccumulatedTokensPerOutcome[_owner][_outcome].tokens =
              safeAdd(ownerAccumulatedTokensPerOutcome[_owner][_outcome].tokens, _tokenAmount); 
         } else {
-            ownerAccumulatedTokensPerOutcome[_owner][_outcome] = OutcomeTokens(_tokenAmount, true);
+            ownerAccumulatedTokensPerOutcome[_owner][_outcome] = OutcomeProperties(_tokenAmount, true);
         }
         
         assert(stox.transferFrom(_owner, this, _tokenAmount));
@@ -230,12 +230,11 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     */ 
     function calculateUserWithdrawAmount(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         
-        uint winningOutcomeTokens = outcomesTokens[winningOutcome].tokens;
-        return (calculateWithdrawalAmount(withdrawCalculationMethod, 
-                                            ownerTotalTokenPlacements[_owner].tokens, 
-                                            ownerAccumulatedTokensPerOutcome[_owner][winningOutcome].tokens, 
-                                            winningOutcomeTokens, 
-                                            tokenPool));
+        return (calculatePrizeAmount(withdrawCalculationMethod, 
+                                     ownerTotalTokenPlacements[_owner].tokens, 
+                                     ownerAccumulatedTokensPerOutcome[_owner][winningOutcome].tokens, 
+                                     outcomesTokens[winningOutcome].tokens, 
+                                     tokenPool));
     }
         
     /*
@@ -308,6 +307,10 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     */
     function hasTokenPlacements(address _owner, bytes32 _outcome) private view returns(bool) {
         return (ownerAccumulatedTokensPerOutcome[_owner][_outcome].tokens > 0);
+    }
+
+    function getNumberOfOutcomes() external constant returns (uint) {
+        return outcomes.length;
     }
 }
 

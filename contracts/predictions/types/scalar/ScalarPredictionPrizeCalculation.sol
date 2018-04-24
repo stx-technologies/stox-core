@@ -18,10 +18,10 @@ contract ScalarPredictionPrizeCalculation is Utils, IScalarPredictionPrizeCalcul
         @param _tokenPool                                   Total amount of tokens put by all owners on all outcomes
 
     */
-    function calculateWithdrawalAmount(ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
-                                        uint _ownerTotalTokensPlacements,
-                                        uint _ownerTotalWinningOutcomeTokensPlacements, 
-                                        uint _tokenPool)
+    function calculatePrizeAmount(ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
+                                  uint _ownerTotalTokensPlacements,
+                                  uint _ownerTotalWinningOutcomeTokensPlacements, 
+                                  uint _tokenPool)
         constant
         public
         returns (uint _amount)

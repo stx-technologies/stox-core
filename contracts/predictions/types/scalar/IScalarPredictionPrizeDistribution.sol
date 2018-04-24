@@ -12,5 +12,5 @@ contract IScalarPredictionPrizeDistribution {
                                     uint _ownerTotalWinningOutcomeTokensPlacements, 
                                     uint _tokenPool)
                                     public;
-    event PrizeWithdrawn(address indexed _owner, uint _tokenAmount, IERC20Token _token);
+    event PrizeDistributed(address indexed _owner, uint _tokenAmount, IERC20Token _token);
 }

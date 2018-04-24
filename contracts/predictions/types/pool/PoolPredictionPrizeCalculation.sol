@@ -20,11 +20,11 @@ contract PoolPredictionPrizeCalculation is Utils, IPoolPredictionPrizeCalculatio
         @param _tokenPool                                   Total amount of tokens put by all owners on all outcomes
 
     */
-    function calculateWithdrawalAmount(PoolPredictionCalculationMethods.PoolCalculationMethod _method, 
-                                        uint _ownerTotalTokensPlacements,
-                                        uint _ownerTotalWinningOutcomeTokensPlacements, 
-                                        uint _usersTotalWinningOutcomeTokensPlacements, 
-                                        uint _tokenPool)
+    function calculatePrizeAmount(PoolPredictionCalculationMethods.PoolCalculationMethod _method, 
+                                  uint _ownerTotalTokensPlacements,
+                                  uint _ownerTotalWinningOutcomeTokensPlacements, 
+                                  uint _usersTotalWinningOutcomeTokensPlacements, 
+                                  uint _tokenPool)
         constant
         public
         returns (uint _amount)
