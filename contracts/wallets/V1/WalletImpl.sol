@@ -141,4 +141,3 @@ contract WalletImpl is IWalletImpl {
             WithdrawFromPoolPrediction(msg.sender, _prediction);
         }
 }
-

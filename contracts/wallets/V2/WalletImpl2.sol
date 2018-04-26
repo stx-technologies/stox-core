@@ -141,4 +141,3 @@ contract WalletImpl2 is IWalletImpl2 {
             WithdrawFromScalarPrediction(msg.sender, _prediction);
         }
 }
-
