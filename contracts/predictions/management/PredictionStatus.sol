@@ -31,10 +31,10 @@ contract PredictionStatus is Ownable, Utils {
      */
     enum Status {
         Initializing,       // The status when the prediction is first created. 
-        Published,          // The prediction is published and users can now buy units.
-        Resolved,           // The prediction is resolved and users can withdraw their units.
-        Paused,             // The prediction is paused and users can no longer buy units until the prediction is published again.
-        Canceled            // The prediction is canceled. Users can get their invested tokens refunded to them.
+        Published,          // The prediction is published and users can now place tokens.
+        Resolved,           // The prediction is resolved and users can withdraw their tokens.
+        Paused,             // The prediction is paused and users can no longer place tokens until the prediction is published again.
+        Canceled            // The prediction is canceled. Users can get their placed tokens refunded to them.
     }
 
     /*
@@ -49,7 +49,6 @@ contract PredictionStatus is Ownable, Utils {
     */
     function PredictionStatus ()
         public
-        //Ownable(_owner)
         {
             status = Status.Initializing;
         }
