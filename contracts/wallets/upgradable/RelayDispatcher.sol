@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../Ownable.sol";
 
 /*
@@ -31,7 +31,7 @@ contract RelayDispatcher is Ownable {
         @param _smartWalletImplAddress      Address of the contract to delegate function calls to
         
     */
-    function RelayDispatcher(address _owner, address _smartWalletImplAddress) 
+    constructor(address _owner, address _smartWalletImplAddress) 
         public
         validAddress(_owner)
         validAddress(_smartWalletImplAddress)
@@ -52,7 +52,7 @@ contract RelayDispatcher is Ownable {
         ownerOnly
         {
             smartWalletImplAddress = _smartWalletImplAddress;
-            SetSmartWalletImplAddress(_smartWalletImplAddress);
+            emit SetSmartWalletImplAddress(_smartWalletImplAddress);
     }
     
     /*

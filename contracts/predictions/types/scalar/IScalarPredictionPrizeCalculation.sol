@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./ScalarPredictionCalculationMethods.sol";
 
 /*
@@ -6,11 +6,12 @@ import "./ScalarPredictionCalculationMethods.sol";
 */
 contract IScalarPredictionPrizeCalculation {
     
-    function calculatePrizeAmount(ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
-                                        uint _ownerTotalTokensPlacements,
-                                        uint _ownerTotalWinningOutcomeTokensPlacements, 
-                                        uint _tokenPool)
-                                        constant
-                                        public
-                                        returns (uint _amount);
+    function calculatePrizeAmount(
+        ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
+        uint _ownerTotalTokensPlacements,
+        uint _ownerTotalWinningOutcomeTokensPlacements, 
+        uint _tokenPool)
+        constant
+        public
+        returns (uint _amount);
 }

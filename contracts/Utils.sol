@@ -7,7 +7,7 @@ contract Utils {
     /*
         @dev constructor
     */
-    function Utils() public {
+    constructor() public {
     }
 
     /*

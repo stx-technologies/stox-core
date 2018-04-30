@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./UpgradableSmartWalletLib.sol";
 import "./RelayDispatcher.sol";
 import "../../token/IERC20Token.sol";
@@ -24,7 +24,7 @@ contract UpgradableSmartWallet {
         @param _relayDispatcher             The address of the contract that holds the relay dispatcher
           
     */  
-    function UpgradableSmartWallet(address _backupAccount, address _operator, address _feesAccount, address _relayDispatcher) 
+    constructor(address _backupAccount, address _operator, address _feesAccount, address _relayDispatcher) 
         public 
         {
             wallet.initUpgradableSmartWallet(_backupAccount, _operator, _feesAccount, _relayDispatcher);

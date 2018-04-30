@@ -38,7 +38,7 @@ contract ScalarOracle is Ownable, Utils {
         @param _owner                       Oracle owner / operator
         @param _name                        Oracle name
     */
-    function ScalarOracle(address _owner, string _name) public notEmptyString(_name) Ownable(_owner) {
+    constructor(address _owner, string _name) public notEmptyString(_name) Ownable(_owner) {
         name = _name;
     }
 
@@ -50,7 +50,7 @@ contract ScalarOracle is Ownable, Utils {
     function registerPrediction(address _prediction) public validAddress(_prediction) ownerOnly {
         predictionsRegistered[_prediction] = true;
 
-        PredictionRegistered(_prediction);
+        emit PredictionRegistered(_prediction);
     }
 
     /*
@@ -61,7 +61,7 @@ contract ScalarOracle is Ownable, Utils {
     function unRegisterPrediction(address _prediction) public validAddress(_prediction) ownerOnly {
         delete predictionsRegistered[_prediction];
 
-        PredictionUnregistered(_prediction);
+        emit PredictionUnregistered(_prediction);
     }
 
     function isPredictionRegistered(address _prediction) private view returns (bool) {
@@ -86,7 +86,7 @@ contract ScalarOracle is Ownable, Utils {
         
         predictionsOutcome[_prediction] = Outcome(_outcome, true);
         
-        OutcomeAssigned(_prediction, _outcome);
+        emit OutcomeAssigned(_prediction, _outcome);
     }
 
     /*
@@ -118,7 +118,7 @@ contract ScalarOracle is Ownable, Utils {
     */
     function setName(string _newName) notEmptyString(_newName) external ownerOnly {
         name = _newName;
-        OracleNameChanged(_newName);
+        emit OracleNameChanged(_newName);
     }
 }
 

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../types/scalar/ScalarPrediction.sol";
 import "./IScalarPredictionFactoryImpl.sol";
 import "../../token/IERC20Token.sol";
@@ -17,7 +17,7 @@ contract ScalarPredictionFactoryImpl is IScalarPredictionFactoryImpl, Utils {
     /*
         Constructor
     */
-    function ScalarPredictionFactoryImpl() public {}
+    constructor() public {}
     
     /*
         @dev Create a Scalar Prediction instance
@@ -30,16 +30,18 @@ contract ScalarPredictionFactoryImpl is IScalarPredictionFactoryImpl, Utils {
         @param _calculationMethod           Prize calculation method
     */
     
-    function createScalarPrediction(address _oracle, 
-            uint _predictionEndTimeSeconds, 
-            uint _buyingEndTimeSeconds, 
-            string _name, 
-            IERC20Token _stox,
-            ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod) 
+    function createScalarPrediction(
+        address _oracle, 
+        uint _predictionEndTimeSeconds, 
+        uint _buyingEndTimeSeconds, 
+        string _name, 
+        IERC20Token _stox,
+        ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod) 
         public 
         validAddress(_stox) 
         {
-            ScalarPrediction newPrediction = new ScalarPrediction(msg.sender, 
+            ScalarPrediction newPrediction = new ScalarPrediction(
+                                                msg.sender, 
                                                 _oracle, 
                                                 _predictionEndTimeSeconds, 
                                                 _buyingEndTimeSeconds, 
@@ -47,7 +49,7 @@ contract ScalarPredictionFactoryImpl is IScalarPredictionFactoryImpl, Utils {
                                                 _stox, 
                                                 _calculationMethod);
 
-            ScalarPredictionCreated(msg.sender, address(newPrediction));
+            emit ScalarPredictionCreated(msg.sender, address(newPrediction));
     }
 }
 

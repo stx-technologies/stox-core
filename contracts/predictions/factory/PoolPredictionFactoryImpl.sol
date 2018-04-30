@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../types/pool/PoolPrediction.sol";
 import "./IPoolPredictionFactoryImpl.sol";
 import "../../token/IERC20Token.sol";
@@ -17,7 +17,7 @@ contract PoolPredictionFactoryImpl is IPoolPredictionFactoryImpl, Utils {
     /*
         @dev constructor
     */
-    function PoolPredictionFactoryImpl() public {}
+    constructor() public {}
 
     /*
         @dev Create a Pool Prediction instance
@@ -29,16 +29,18 @@ contract PoolPredictionFactoryImpl is IPoolPredictionFactoryImpl, Utils {
         @param _stox                        Token 
         @param _calculationMethod           Prize calculation method
     */
-    function createPoolPrediction(address _oracle, 
-            uint _predictionEndTimeSeconds, 
-            uint _buyingEndTimeSeconds, 
-            string _name, 
-            IERC20Token _stox,
-            PoolPredictionCalculationMethods.PoolCalculationMethod _calculationMethod) 
+    function createPoolPrediction(
+        address _oracle, 
+        uint _predictionEndTimeSeconds, 
+        uint _buyingEndTimeSeconds, 
+        string _name, 
+        IERC20Token _stox,
+        PoolPredictionCalculationMethods.PoolCalculationMethod _calculationMethod) 
         public 
         validAddress(_stox) 
         {
-            PoolPrediction newPrediction = new PoolPrediction(msg.sender, 
+            PoolPrediction newPrediction = new PoolPrediction(
+                                                msg.sender, 
                                                 _oracle, 
                                                 _predictionEndTimeSeconds, 
                                                 _buyingEndTimeSeconds, 
@@ -46,7 +48,7 @@ contract PoolPredictionFactoryImpl is IPoolPredictionFactoryImpl, Utils {
                                                 _stox, 
                                                 _calculationMethod);
 
-            PoolPredictionCreated(msg.sender, address(newPrediction));
+            emit PoolPredictionCreated(msg.sender, address(newPrediction));
     }
 }
 

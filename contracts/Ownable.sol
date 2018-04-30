@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 /*
@@ -13,7 +13,7 @@ contract Ownable {
     /*
         @dev constructor
     */
-    function Ownable(address _owner) public {
+    constructor(address _owner) public {
         owner = _owner;
     }
 
@@ -42,7 +42,7 @@ contract Ownable {
     */
     function acceptOwnership() public {
         require(msg.sender == newOwner);
-        OwnerUpdate(owner, newOwner);
+        emit OwnerUpdate(owner, newOwner);
         owner = newOwner;
         newOwner = address(0);
     }

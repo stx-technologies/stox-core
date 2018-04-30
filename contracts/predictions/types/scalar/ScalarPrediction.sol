@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../../oracles/types/ScalarOracle.sol";
 import "../../../token/IERC20Token.sol";
 import "./ScalarPredictionPrizeDistribution.sol";
@@ -16,7 +16,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
      *  Events
      */
     event TokensPlacedOnOutcome(address indexed _owner, int indexed _outcome, uint _tokenAmount);
-    event UserRefunded(address indexed _owner, int _outcome, uint _tokenAmount);
+    event UserRefunded(address indexed _owner, int indexed _outcome, uint _tokenAmount);
 
     /*
      *  Enum and Structs
@@ -48,29 +48,26 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         @param _owner                       Prediction owner / operator
         @param _oracle                      The oracle provides the winning outcome for the prediction
         @param _predictionEndTimeSeconds    Prediction end time
-        @param _buyingEndTimeSeconds        outcome buying end time
+        @param _tokensPlacementEndTimeSeconds        outcome buying end time
         @param _name                        Prediction name
         @param _stox                        Stox ERC20 token address
         @param _calculationMethod           Method of calculating prizes
     */
-    function ScalarPrediction(address _owner,
-            address _oracle,
-            uint _predictionEndTimeSeconds,
-            uint _buyingEndTimeSeconds,
-            string _name,
-            IERC20Token _stox,
-            ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod)
-            public 
-            validAddress(_oracle)
-            validAddress(_owner)
-            validAddress(_stox)
-            greaterThanZero(_predictionEndTimeSeconds)
-            greaterThanZero(_buyingEndTimeSeconds)
-            notEmptyString(_name)
-            Ownable(_owner)
-            ScalarPredictionPrizeDistribution(_predictionEndTimeSeconds, _buyingEndTimeSeconds)
-            PredictionMetaData(_name, _oracle)
-            {
+    constructor(
+        address _owner,
+        address _oracle,
+        uint _predictionEndTimeSeconds,
+        uint _tokensPlacementEndTimeSeconds,
+        string _name,
+        IERC20Token _stox,
+        ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod)
+        public 
+        validAddress(_owner)
+        validAddress(_stox)
+        Ownable(_owner)
+        PredictionTiming(_predictionEndTimeSeconds, _tokensPlacementEndTimeSeconds)
+        PredictionMetaData(_name, _oracle)
+        {
 
         stox = _stox;
         withdrawCalculationMethod = _calculationMethod;
@@ -93,21 +90,17 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
             greaterThanZero(_tokenAmount)
             {
         
-        require(unitBuyingEndTimeSeconds > now);
+        require(tokensPlacementEndTimeSeconds > now);
 
         tokenPool = safeAdd(tokenPool, _tokenAmount);
         ownerTotalTokenPlacements[_owner].tokens = safeAdd(ownerTotalTokenPlacements[_owner].tokens, _tokenAmount);
 
-        if (ownerAccumulatedTokensPerOutcome[_owner][_outcome] > 0) {
-            ownerAccumulatedTokensPerOutcome[_owner][_outcome] =
+        ownerAccumulatedTokensPerOutcome[_owner][_outcome] =
              safeAdd(ownerAccumulatedTokensPerOutcome[_owner][_outcome], _tokenAmount); 
-        } else {
-            ownerAccumulatedTokensPerOutcome[_owner][_outcome] = _tokenAmount;
-        }
         
         assert(stox.transferFrom(_owner, this, _tokenAmount));
         
-        TokensPlacedOnOutcome(_owner, _outcome, _tokenAmount);
+        emit TokensPlacedOnOutcome(_owner, _outcome, _tokenAmount);
     }
 
     /*
@@ -129,7 +122,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     */
     function resolve() public ownerOnly {
         require (((ScalarOracle(oracleAddress)).isOutcomeSet(this)) &&
-            (unitBuyingEndTimeSeconds < now));
+            (tokensPlacementEndTimeSeconds < now));
 
         winningOutcome = (ScalarOracle(oracleAddress)).getOutcome(this);
 
@@ -142,13 +135,14 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
      */
     function withdrawPrize() public statusIs(Status.Resolved) {
         require((ownerTotalTokenPlacements[msg.sender].tokens > 0) &&
-                (!ownerTotalTokenPlacements[msg.sender].hasWithdrawn));
+            (!ownerTotalTokenPlacements[msg.sender].hasWithdrawn));
 
-        distributePrizeToUser(stox, 
-                                withdrawCalculationMethod, 
-                                ownerTotalTokenPlacements[msg.sender].tokens,
-                                ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome], 
-                                tokenPool);
+        distributePrizeToUser(
+            stox, 
+            withdrawCalculationMethod, 
+            ownerTotalTokenPlacements[msg.sender].tokens,
+            ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome], 
+            tokenPool);
 
     
         ownerTotalTokenPlacements[msg.sender].hasWithdrawn = true;
@@ -164,10 +158,11 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     */ 
     function calculateUserWithdrawAmount(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         
-        return (calculatePrizeAmount(withdrawCalculationMethod, 
-                                     ownerTotalTokenPlacements[_owner].tokens, 
-                                     ownerAccumulatedTokensPerOutcome[_owner][winningOutcome], 
-                                     tokenPool));
+        return (calculatePrizeAmount(
+            withdrawCalculationMethod, 
+            ownerTotalTokenPlacements[_owner].tokens, 
+            ownerAccumulatedTokensPerOutcome[_owner][winningOutcome], 
+            tokenPool));
     
     }
 
@@ -178,9 +173,8 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         @param _outcome         Outcome to refund
     */
     function refundUser(address _owner, int _outcome) public ownerOnly {
-        require ((status != Status.Resolved) &&
-                (ownerAccumulatedTokensPerOutcome[_owner][_outcome] > 0));
-        
+        require (status != Status.Resolved);
+                
         performRefund(_owner, _outcome);
         
     }
@@ -192,8 +186,6 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         @param _outcome     Outcome to refund
     */
     function getRefund(int _outcome) public statusIs(Status.Canceled) {
-        require(ownerAccumulatedTokensPerOutcome[msg.sender][_outcome] > 0);
-        
         performRefund(msg.sender, _outcome);
     }
 
@@ -217,7 +209,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
             stox.transfer(_owner, refundAmount); // Refund the user
         }
 
-        UserRefunded(_owner, _outcome, refundAmount);
+        emit UserRefunded(_owner, _outcome, refundAmount);
     }
 
     /*

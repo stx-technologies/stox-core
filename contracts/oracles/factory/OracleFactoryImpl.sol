@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../types/MultipleOutcomeOracle.sol";
 import "../types/ScalarOracle.sol";
 import "./IUpgradableOracleFactoryImpl.sol";
@@ -11,7 +11,7 @@ contract OracleFactoryImpl is IUpgradableOracleFactoryImpl {
     event MultipleOutcomeOracleCreated(address indexed _creator, address indexed _newOracle);
     event ScalarOracleCreated(address indexed _creator, address indexed _newOracle);
 
-    function OracleFactoryImpl() public {}
+    constructor() public {}
 
     /*
         @dev Create a Pool Oracle instance
@@ -21,7 +21,7 @@ contract OracleFactoryImpl is IUpgradableOracleFactoryImpl {
     function createMultipleOutcomeOracle(string _name) public {
         MultipleOutcomeOracle newOracle = new MultipleOutcomeOracle(msg.sender, _name);
 
-        MultipleOutcomeOracleCreated(msg.sender, address(newOracle));
+        emit MultipleOutcomeOracleCreated(msg.sender, address(newOracle));
     }
 
     /*
@@ -32,7 +32,7 @@ contract OracleFactoryImpl is IUpgradableOracleFactoryImpl {
     function createScalarOracle(string _name) public {
         ScalarOracle newOracle = new ScalarOracle(msg.sender, _name);
 
-        ScalarOracleCreated(msg.sender, address(newOracle));
+        emit ScalarOracleCreated(msg.sender, address(newOracle));
     }
 }
 

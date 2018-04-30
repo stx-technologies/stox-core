@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../Ownable.sol";
 import "../../Utils.sol";
 import "../../token/IERC20Token.sol";
@@ -47,12 +47,11 @@ contract PredictionStatus is Ownable, Utils {
 
         @param _owner       Prediction owner / operator
     */
-    function PredictionStatus ()
+    constructor()
         public
-        //Ownable(_owner)
         {
             status = Status.Initializing;
-        }
+    }
 
     /*
         @dev Allow the prediction owner to publish the prediction
@@ -63,7 +62,7 @@ contract PredictionStatus is Ownable, Utils {
 
         status = Status.Published;
 
-        PredictionPublished();
+        emit PredictionPublished();
     }
 
     /*
@@ -73,7 +72,7 @@ contract PredictionStatus is Ownable, Utils {
         
         status = Status.Resolved;
 
-        PredictionResolved(_oracle, _winningOutcome);
+        emit PredictionResolved(_oracle, _winningOutcome);
     }
 
     /*
@@ -85,7 +84,7 @@ contract PredictionStatus is Ownable, Utils {
         
         status = Status.Canceled;
 
-        PredictionCanceled();
+        emit PredictionCanceled();
     }
 
     /*
@@ -94,7 +93,7 @@ contract PredictionStatus is Ownable, Utils {
     function pause() statusIs(Status.Published) public {
         status = Status.Paused;
 
-        PredictionPaused();
+        emit PredictionPaused();
     }
 
 }

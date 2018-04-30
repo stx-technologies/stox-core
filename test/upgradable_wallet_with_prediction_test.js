@@ -2,15 +2,14 @@ const utils = require('./helpers/utils');
 const web3utils = require('web3-utils');
 
 const NewWalletImpl = artifacts.require("./wallets/V1/WalletImpl.sol");
-const NewWalletImpl2 = artifacts.require("./wallets/V2/WalletImpl2.sol");
+const NewWalletImpl2 = artifacts.require("./wallets/V2/WalletImplV2.sol");
 const UpgradableSmartWallet = artifacts.require("./wallets/upgradable/UpgradableSmartWallet.sol");
 const INewWalletImpl = artifacts.require("./wallets/V1/IWalletImpl.sol");
-const INewWalletImpl2 = artifacts.require("./wallets/V2/IWalletImpl2.sol");
+const INewWalletImpl2 = artifacts.require("./wallets/V2/IWalletImplV2.sol");
 const RelayDispatcher = artifacts.require("./wallets/upgradable/RelayDispatcher.sol");
 const ExtendedERC20Token = artifacts.require("./token/ExtendedERC20Token.sol");
 const PoolPrediction = artifacts.require("./predictions/types/pool/PoolPrediction.sol");
 const UpgradablePredictionFactory = artifacts.require("./predictions/factory/UpgradablePredictionFactory.sol");
-const IUpgradablePredictionFactory = artifacts.require("./predictions/factory/IUpgradablePredictionFactory.sol");
 const PoolPredictionFactoryImpl = artifacts.require("./predictions/factory/PoolPredictionFactoryImpl.sol");
 const IPoolPredictionFactoryImpl = artifacts.require("./predictions/factory/IPoolPredictionFactoryImpl.sol");
 const UpgradableOracleFactory = artifacts.require("./oracles/factory/UpgradableOracleFactory.sol");

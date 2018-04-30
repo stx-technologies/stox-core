@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./PredictionStatus.sol";
 
 /*
@@ -22,7 +22,9 @@ contract PredictionMetaData is PredictionStatus {
     /*
      *  Constructor 
     */
-    function PredictionMetaData(string _name, address _oracleAddress) 
+    constructor(string _name, address _oracleAddress) 
+        validAddress(_oracleAddress)
+        notEmptyString(_name)
         public 
         {
             name = _name;
@@ -38,7 +40,7 @@ contract PredictionMetaData is PredictionStatus {
     function setPredictionName(string _newName) notEmptyString(_newName) external ownerOnly {
         name = _newName;
 
-        PredictionNameChanged(_newName);
+        emit PredictionNameChanged(_newName);
     }
 
     /*
@@ -51,6 +53,6 @@ contract PredictionMetaData is PredictionStatus {
 
         oracleAddress = _oracle;
 
-        OracleChanged(oracleAddress);
+        emit OracleChanged(oracleAddress);
     }
 }

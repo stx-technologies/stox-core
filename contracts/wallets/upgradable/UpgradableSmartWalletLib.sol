@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../token/IERC20Token.sol";
 import "./RelayDispatcher.sol";
 
@@ -73,7 +73,7 @@ library UpgradableSmartWalletLib {
         operatorOnly(_self.operatorAccount)
         {
             _token.transfer(_self.backupAccount, _amount);
-            TransferToBackupAccount(_token, _self.backupAccount, _amount); 
+            emit TransferToBackupAccount(_token, _self.backupAccount, _amount); 
     }
 
     /*
@@ -88,7 +88,7 @@ library UpgradableSmartWalletLib {
         validAddress(_relayDispatcher)
         {
             _self.relayDispatcher = _relayDispatcher;
-            SetRelayDispatcher(_relayDispatcher);
+            emit SetRelayDispatcher(_relayDispatcher);
     }
 }
 

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./ERC20Token.sol";
 import "../Ownable.sol";
 
@@ -22,8 +22,8 @@ contract ExtendedERC20Token is ERC20Token, Ownable {
         @param _symbol     token short symbol, minimum 1 character
         @param _decimals   for display purposes only
     */
-    function ExtendedERC20Token(string _name, string _symbol, uint8 _decimals) public ERC20Token(_name, _symbol, _decimals) Ownable(msg.sender) {
-        NewSmartToken(address(this));
+    constructor(string _name, string _symbol, uint8 _decimals) public ERC20Token(_name, _symbol, _decimals) Ownable(msg.sender) {
+        emit NewSmartToken(address(this));
     }
 
     // allows execution only when transfers aren't disabled
@@ -58,8 +58,8 @@ contract ExtendedERC20Token is ERC20Token, Ownable {
         totalSupply = safeAdd(totalSupply, _amount);
         balanceOf[_to] = safeAdd(balanceOf[_to], _amount);
 
-        Issuance(_amount);
-        Transfer(this, _to, _amount);
+        emit Issuance(_amount);
+        emit Transfer(this, _to, _amount);
     }
 
     /**
@@ -75,8 +75,8 @@ contract ExtendedERC20Token is ERC20Token, Ownable {
         balanceOf[_from] = safeSub(balanceOf[_from], _amount);
         totalSupply = safeSub(totalSupply, _amount);
 
-        Transfer(_from, this, _amount);
-        Destruction(_amount);
+        emit Transfer(_from, this, _amount);
+        emit Destruction(_amount);
     }
 
     // ERC20 standard method overrides with some extra functionality

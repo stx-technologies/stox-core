@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../token/IERC20Token.sol";
 import "../../predictions/types/pool/PoolPrediction.sol";
 
@@ -14,12 +14,13 @@ contract IWalletImpl {
 
     event SetRelayDispatcher(address _relayDispatcher);
     event TransferToBackupAccount(address _token, address _backupAccount, uint _amount);
-    event TransferToUserWithdrawalAccount(address _token, 
-                                            address _userWithdrawalAccount, 
-                                            uint _amount, 
-                                            address _feesToken, 
-                                            address _feesAccount, 
-                                            uint _fee);
+    event TransferToUserWithdrawalAccount(
+        address _token, 
+        address _userWithdrawalAccount, 
+        uint _amount, 
+        address _feesToken, 
+        address _feesAccount, 
+        uint _fee);
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
     event VoteOnPoolPrediction(address _voter, address _prediction, bytes32 _outcome, uint _amount);
     event WithdrawFromPoolPrediction(address _wallet, address _prediction);

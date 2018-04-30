@@ -198,12 +198,13 @@ contract('PoolPrediction', function(accounts) {
 
         await initOracle();
         
-        await checkGas();
+        //await checkGas();
         
       });
     
     it("verify correct number of outcomes returned from get function", async function() {
         let poolPrediction = await initPrediction(calculationType.breakEven);
+        
         await poolPrediction.addOutcome(100, {from: predictionOperator});
         await poolPrediction.addOutcome(200, {from: predictionOperator});
         await poolPrediction.addOutcome("300", {from: predictionOperator});
@@ -375,8 +376,8 @@ contract('PoolPrediction', function(accounts) {
         let poolPrediction = await initPrediction(calculationType.relative);
 
         await poolPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
-        let unitBuyingEndTimeSeconds = await poolPrediction.unitBuyingEndTimeSeconds.call();
-        assert.equal(unitBuyingEndTimeSeconds, tommorowInSeconds - 1000);
+        let tokensPlacementEndTimeSeconds = await poolPrediction.tokensPlacementEndTimeSeconds.call();
+        assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("verify that the units buying end time can be changed when prediction is paused", async function() {
@@ -385,8 +386,8 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.pause({from: predictionOperator});
 
         await poolPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
-        let unitBuyingEndTimeSeconds = await poolPrediction.unitBuyingEndTimeSeconds.call();
-        assert.equal(unitBuyingEndTimeSeconds, tommorowInSeconds - 1000);
+        let tokensPlacementEndTimeSeconds = await poolPrediction.tokensPlacementEndTimeSeconds.call();
+        assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("should throw if units buying end time is changed when prediction is published", async function() {
@@ -1022,6 +1023,29 @@ contract('PoolPrediction', function(accounts) {
         await initPlayers(poolPrediction.address);
         await poolPrediction.placeTokens(1000, 100, {from: player1});
         await poolPrediction.cancel({from: predictionOperator});
+        
+        try {
+            await poolPrediction.refundUser(player1, 200, {from: predictionOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
+    });
+
+    it("should throw if the operator tries to refund a user on a resolved prediction", async function() {
+        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        await poolPrediction.publish({from: predictionOperator});
+
+        await initPlayers(poolPrediction.address);
+        await poolPrediction.placeTokens(1000, 100, {from: player1});
+        await poolPrediction.pause({from: predictionOperator});
+        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.publish({from: predictionOperator});
+        await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
+        await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
+
+        await poolPrediction.contract.resolve['']({from: predictionOperator});
         
         try {
             await poolPrediction.refundUser(player1, 200, {from: predictionOperator});

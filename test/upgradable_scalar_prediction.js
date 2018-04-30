@@ -283,8 +283,8 @@ contract('ScalarPrediction', function(accounts) {
         let scalarPrediction = await initPrediction(calculationType.breakEven);
         
         await scalarPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
-        let unitBuyingEndTimeSeconds = await scalarPrediction.unitBuyingEndTimeSeconds.call();
-        assert.equal(unitBuyingEndTimeSeconds, tommorowInSeconds - 1000);
+        let tokensPlacementEndTimeSeconds = await scalarPrediction.tokensPlacementEndTimeSeconds.call();
+        assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("verify that the units buying end time can be changed when prediction is paused", async function() {
@@ -293,8 +293,8 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.pause({from: predictionOperator});
 
         await scalarPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
-        let unitBuyingEndTimeSeconds = await scalarPrediction.unitBuyingEndTimeSeconds.call();
-        assert.equal(unitBuyingEndTimeSeconds, tommorowInSeconds - 1000);
+        let tokensPlacementEndTimeSeconds = await scalarPrediction.tokensPlacementEndTimeSeconds.call();
+        assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("should throw if units buying end time is changed when prediction is published", async function() {
@@ -607,6 +607,29 @@ contract('ScalarPrediction', function(accounts) {
         
         predictionStatus = await scalarPrediction.status.call();
         assert.equal(predictionStatus, 4);
+    });
+
+    it("should throw if the operator tries to refund a user on a resolved prediction", async function() {
+        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        await scalarPrediction.publish({from: predictionOperator});
+        
+        await initPlayers(scalarPrediction.address);
+
+        await scalarPrediction.placeTokens(1000, 100, {from: player1});
+        await scalarPrediction.pause({from: predictionOperator});
+        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.publish({from: predictionOperator});
+        await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
+        await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
+        await scalarPrediction.contract.resolve['']({from: predictionOperator});
+        
+        try {
+            await scalarPrediction.refundUser(player1, 100, {from: predictionOperator});
+        } catch (error) {
+            return utils.ensureException(error);
+        }
+
+        assert.equal(false, "Didn't throw");
     });
 
     it("verify that a operator can refund a user after the prediction is canceled", async function() {

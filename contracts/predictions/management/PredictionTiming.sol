@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./PredictionMetaData.sol";
 
 /*
@@ -6,15 +6,15 @@ import "./PredictionMetaData.sol";
 */
 contract PredictionTiming is PredictionMetaData {
 
-    // Note: operator should close the units sale in his website some time before the actual unitBuyingEndTimeSeconds as the ethereum network
+    // Note: operator should close the units sale in his website some time before the actual tokensPlacementEndTimeSeconds as the ethereum network
     // may take several minutes to process transactions
-    uint        public unitBuyingEndTimeSeconds;   // After this time passes, users can no longer buy units
+    uint        public tokensPlacementEndTimeSeconds;   // After this time passes, users can no longer buy units
     uint        public predictionEndTimeSeconds;   // After this time passes, users can withdraw their winning units
     
     /*
      *  Events
      */
-    event UnitBuyingEndTimeChanged(uint _newTime);
+    event TokenPlacementEndTimeChanged(uint _newTime);
     event PredictionEndTimeChanged(uint _newTime);
 
     /*
@@ -22,15 +22,16 @@ contract PredictionTiming is PredictionMetaData {
 
         @param _owner                           Prediction owner / operator
         @param _predictionEndTimeSeconds        Prediction end time
-        @param _unitBuyingEndTimeSeconds        Unit buying end time
+        @param _tokensPlacementEndTimeSeconds        Unit buying end time
     */
-    function PredictionTiming (uint _predictionEndTimeSeconds, uint _unitBuyingEndTimeSeconds)
+    constructor(uint _predictionEndTimeSeconds, uint _tokensPlacementEndTimeSeconds)
+        greaterThanZero(_predictionEndTimeSeconds)
+        greaterThanZero(_tokensPlacementEndTimeSeconds)
         public
-        //Ownable(_owner)
         {
-            require (_predictionEndTimeSeconds >= _unitBuyingEndTimeSeconds);
+            require (_predictionEndTimeSeconds >= _tokensPlacementEndTimeSeconds);
 
-            unitBuyingEndTimeSeconds = _unitBuyingEndTimeSeconds;
+            tokensPlacementEndTimeSeconds = _tokensPlacementEndTimeSeconds;
             predictionEndTimeSeconds = _predictionEndTimeSeconds;
         }
 
@@ -39,12 +40,12 @@ contract PredictionTiming is PredictionMetaData {
 
         @param _newUnitBuyingEndTimeSeconds Unit buying end time
     */
-    function setUnitBuyingEndTime(uint _newUnitBuyingEndTimeSeconds) external  greaterThanZero(_newUnitBuyingEndTimeSeconds) ownerOnly {
-         require ((predictionEndTimeSeconds >= _newUnitBuyingEndTimeSeconds) && 
+    function setUnitBuyingEndTime(uint _newTokensPlacementEndTimeSeconds) external  greaterThanZero(_newTokensPlacementEndTimeSeconds) ownerOnly {
+         require ((predictionEndTimeSeconds >= _newTokensPlacementEndTimeSeconds) && 
                     ((status == Status.Initializing) || (status == Status.Paused))); 
 
-         unitBuyingEndTimeSeconds = _newUnitBuyingEndTimeSeconds;
-         UnitBuyingEndTimeChanged(_newUnitBuyingEndTimeSeconds);
+         tokensPlacementEndTimeSeconds = _newTokensPlacementEndTimeSeconds;
+         emit TokenPlacementEndTimeChanged(_newTokensPlacementEndTimeSeconds);
     }
 
     /*
@@ -53,12 +54,12 @@ contract PredictionTiming is PredictionMetaData {
         @param _newPredictionEndTimeSeconds Prediction end time
     */
     function setPredictionEndTime(uint _newPredictionEndTimeSeconds) external ownerOnly {
-         require ((_newPredictionEndTimeSeconds >= unitBuyingEndTimeSeconds) && 
+         require ((_newPredictionEndTimeSeconds >= tokensPlacementEndTimeSeconds) && 
                     ((status == Status.Initializing) || (status == Status.Paused))); 
 
          predictionEndTimeSeconds = _newPredictionEndTimeSeconds;
 
-         PredictionEndTimeChanged(_newPredictionEndTimeSeconds);
+         emit PredictionEndTimeChanged(_newPredictionEndTimeSeconds);
     }
    
 }

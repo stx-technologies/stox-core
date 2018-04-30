@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../token/IERC20Token.sol";
 import "../upgradable/UpgradableSmartWalletLib.sol";
 import "./IWalletImpl.sol";
@@ -40,12 +40,13 @@ contract WalletImpl is IWalletImpl {
     /*
      *  Events
      */
-    event TransferToUserWithdrawalAccount(address _token, 
-                                            address _userWithdrawalAccount, 
-                                            uint _amount, 
-                                            address _feesToken, 
-                                            address _feesAccount, 
-                                            uint _fee);
+    event TransferToUserWithdrawalAccount(
+        address _token, 
+        address _userWithdrawalAccount, 
+        uint _amount, 
+        address _feesToken, 
+        address _feesAccount, 
+        uint _fee);
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
     event VoteOnPoolPrediction(address _voter, address _prediction, bytes32 _outcome, uint _amount);
     event WithdrawFromPoolPrediction(address _wallet, address _prediction);
@@ -81,7 +82,7 @@ contract WalletImpl is IWalletImpl {
         addressNotSet(wallet.userWithdrawalAccount) 
         {
             wallet.userWithdrawalAccount = _userWithdrawalAccount;
-            SetUserWithdrawalAccount(_userWithdrawalAccount);
+            emit SetUserWithdrawalAccount(_userWithdrawalAccount);
     }
 
     /*
@@ -103,7 +104,7 @@ contract WalletImpl is IWalletImpl {
             }       
                 
             _token.transfer(wallet.userWithdrawalAccount, _amount);
-            TransferToUserWithdrawalAccount(_token, 
+            emit TransferToUserWithdrawalAccount(_token, 
                                                 wallet.userWithdrawalAccount, 
                                                 _amount,  
                                                 _feesToken, 
@@ -125,7 +126,7 @@ contract WalletImpl is IWalletImpl {
             _token.approve(_prediction, 0);
             _token.approve(_prediction, _amount);
             _prediction.placeTokens(_amount, _outcome);
-            VoteOnPoolPrediction(msg.sender, _prediction, _outcome, _amount);
+            emit VoteOnPoolPrediction(msg.sender, _prediction, _outcome, _amount);
         }
 
     /*
@@ -138,7 +139,7 @@ contract WalletImpl is IWalletImpl {
         validAddress(_prediction)
         {
             _prediction.withdrawPrize();
-            WithdrawFromPoolPrediction(msg.sender, _prediction);
+            emit WithdrawFromPoolPrediction(msg.sender, _prediction);
         }
 }
 
