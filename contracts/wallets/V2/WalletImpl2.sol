@@ -1,14 +1,14 @@
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.18;
 import "../../token/IERC20Token.sol";
 import "../upgradable/UpgradableSmartWalletLib.sol";
-import "./IWalletImpl.sol";
-import "../../predictions/types/pool/PoolPrediction.sol";
+import "./IWalletImpl2.sol";
+import "../../predictions/types/scalar/ScalarPrediction.sol";
 
 /*
-    @title WalletImpl contract - A wallet implementation. This specific one implements voting on a 
-    pool prediction. 
+    @title WalletImpls contract - A wallet implementation. This specific one implements voting on a 
+    scalar prediction. 
 */
-contract WalletImpl is IWalletImpl {
+contract WalletImpl2 is IWalletImpl2 {
         
     /*
      *  Members
@@ -40,16 +40,15 @@ contract WalletImpl is IWalletImpl {
     /*
      *  Events
      */
-    event TransferToUserWithdrawalAccount(
-        address _token, 
-        address _userWithdrawalAccount, 
-        uint _amount, 
-        address _feesToken, 
-        address _feesAccount, 
-        uint _fee);
+    event TransferToUserWithdrawalAccount(address _token, 
+                                            address _userWithdrawalAccount, 
+                                            uint _amount, 
+                                            address _feesToken, 
+                                            address _feesAccount, 
+                                            uint _fee);
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
-    event VoteOnPoolPrediction(address _voter, address _prediction, bytes32 _outcome, uint _amount);
-    event WithdrawFromPoolPrediction(address _wallet, address _prediction);
+    event VoteOnScalarPrediction(address _voter, address _prediction, int _outcome, uint _amount);
+    event WithdrawFromScalarPrediction(address _wallet, address _prediction);
 
     /*
         @dev Initialize the wallet with the operator and backupAccount address
@@ -82,7 +81,7 @@ contract WalletImpl is IWalletImpl {
         addressNotSet(wallet.userWithdrawalAccount) 
         {
             wallet.userWithdrawalAccount = _userWithdrawalAccount;
-            emit SetUserWithdrawalAccount(_userWithdrawalAccount);
+            SetUserWithdrawalAccount(_userWithdrawalAccount);
     }
 
     /*
@@ -104,7 +103,7 @@ contract WalletImpl is IWalletImpl {
             }       
                 
             _token.transfer(wallet.userWithdrawalAccount, _amount);
-            emit TransferToUserWithdrawalAccount(_token, 
+            TransferToUserWithdrawalAccount(_token, 
                                                 wallet.userWithdrawalAccount, 
                                                 _amount,  
                                                 _feesToken, 
@@ -119,14 +118,14 @@ contract WalletImpl is IWalletImpl {
         @param _outcome          The chosen outcome to vote on
         @param _amount           Amount of tokens to vote on the outcome   
     */
-    function voteOnPoolPrediction(IERC20Token _token, PoolPrediction _prediction, bytes32 _outcome, uint _amount) 
+    function voteOnScalarPrediction(IERC20Token _token, ScalarPrediction _prediction, int _outcome, uint _amount) 
         public
         validAddress(_prediction) 
         {
             _token.approve(_prediction, 0);
             _token.approve(_prediction, _amount);
             _prediction.placeTokens(_amount, _outcome);
-            emit VoteOnPoolPrediction(msg.sender, _prediction, _outcome, _amount);
+            VoteOnScalarPrediction(msg.sender, _prediction, _outcome, _amount);
         }
 
     /*
@@ -134,11 +133,11 @@ contract WalletImpl is IWalletImpl {
 
         @param _prediction       Pool prediction to withdraw from  
     */
-    function withdrawFromPoolPrediction(PoolPrediction _prediction)
+    function withdrawFromScalarPrediction(ScalarPrediction _prediction)
         public
         validAddress(_prediction)
         {
             _prediction.withdrawPrize();
-            emit WithdrawFromPoolPrediction(msg.sender, _prediction);
+            WithdrawFromScalarPrediction(msg.sender, _prediction);
         }
 }

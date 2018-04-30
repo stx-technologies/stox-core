@@ -24,6 +24,4 @@ contract IWalletImpl {
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
     event VoteOnPoolPrediction(address _voter, address _prediction, bytes32 _outcome, uint _amount);
     event WithdrawFromPoolPrediction(address _wallet, address _prediction);
-
-
 }

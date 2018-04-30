@@ -91,4 +91,3 @@ library UpgradableSmartWalletLib {
             emit SetRelayDispatcher(_relayDispatcher);
     }
 }
-

@@ -115,7 +115,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     }
 
     /*
-        @dev Allow the prediction owner to change add a new outcome to the prediction
+        @dev Allow the prediction owner to add a new outcome to the prediction
 
         @param _id   Outcome value
     */
@@ -135,7 +135,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     }
         
     /*
-        @dev Allow any user to place tokens on an outcome. Note that users can make multiple placements, on multiple outcomes.
+        @dev Allow a user to place tokens on an outcome. Note that users can make multiple placements on multiple outcomes.
         Before calling placeTokensFor the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
@@ -166,7 +166,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
 
 
     /*
-        @dev Allow any user to place tokens on a specific outcome.
+        @dev Allow a user to place tokens on a specific outcome. Note that users can make multiple placements on multiple outcomes.
         Before calling placeTokens the user should first call the approve(thisPredictionAddress, tokenAmount) on the
         stox token (or any other ERC20 token).
 
@@ -198,6 +198,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     function withdrawPrize() public statusIs(Status.Resolved) {
         require((ownerTotalTokenPlacements[msg.sender].tokens > 0) &&
                 (!ownerTotalTokenPlacements[msg.sender].hasWithdrawn));
+<<<<<<< HEAD
 
         distributePrizeToUser(stox, 
                               withdrawCalculationMethod, 
@@ -205,6 +206,15 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
                               ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome], 
                               outcomesProperties[winningOutcome].tokens, 
                               tokenPool);
+=======
+        
+        distributePrizeToUser(stox, 
+                                withdrawCalculationMethod, 
+                                ownerTotalTokenPlacements[msg.sender].tokens,
+                                ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome].tokens, 
+                                outcomesTokens[winningOutcome].tokens, 
+                                tokenPool);
+>>>>>>> a315e6b55b18dd0d4f4b9ac28aa20954ef1bbbfd
 
         ownerTotalTokenPlacements[msg.sender].hasWithdrawn = true;
     }
@@ -231,8 +241,13 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
         @param _owner       Placements owner
         @param _outcome     Outcome to refund
     */
+<<<<<<< HEAD
     function refundUser(address _owner, bytes32 _outcome) public ownerOnly {
         require (status != Status.Resolved);
+=======
+    function refundUser(address _owner, bytes32 _outcome) public ownerOnly statusIs(Status.Resolved) {
+        require (ownerAccumulatedTokensPerOutcome[_owner][_outcome].tokens > 0);
+>>>>>>> a315e6b55b18dd0d4f4b9ac28aa20954ef1bbbfd
         
         performRefund(_owner, _outcome);
     }

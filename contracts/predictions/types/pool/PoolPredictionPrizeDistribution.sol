@@ -18,10 +18,10 @@ contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPriz
         @dev Distribute a prize for a user, by method
 
         @param _token                                       ERC20token token
-        @param _method                                      Method of calculating prizes
+        @param _method                                      Method for calculating prizes
         @param _ownerTotalTokensPlacements                  Total amount of tokens the owner put on any outcome
         @param _ownerTotalWinningOutcomeTokensPlacements    Total amount of tokens the owner put on the winning outcome
-        @param _totalWinningOutcomeTokens                   Total amount of tokens all owners put on the winning outcome
+        @param _usersTotalWinningOutcomeTokensPlacements    Total amount of tokens all users put on the winning outcome
         @param _tokenPool                                   Total amount of tokens put by all owners on all outcomes
 
     */
