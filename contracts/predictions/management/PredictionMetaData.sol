@@ -1,17 +1,37 @@
 pragma solidity ^0.4.23;
-import "./PredictionStatus.sol";
+import "../../Ownable.sol";
+import "../../Utils.sol";
+import "../../token/IERC20Token.sol";
+import "../prizeCalculations/IPrizeCalculation.sol";
 
 /*
     @title PredictionMetaData contract - holds generic data for a prediction.
 */
-contract PredictionMetaData is PredictionStatus {
+contract PredictionMetaData is Ownable, Utils {
 
     /*
      *  Members
      */
-    string      public version = "0.1";
-    string      public name;
-    address     public oracleAddress;       // When the prediction is resolved the oracle will tell the prediction who is the winning outcome
+
+     /*
+     *  Enums and Structs
+     */
+    enum Status {
+        Initializing,       // The status when the prediction is first created. 
+        Published,          // The prediction is published and users can now place tokens.
+        Resolved,           // The prediction is resolved and users can withdraw their tokens.
+        Paused,             // The prediction is paused and users can no longer place tokens until the prediction is published again.
+        Canceled            // The prediction is canceled. Users can get their placed tokens refunded to them.
+    }
+
+    
+    Status              public status;
+    string              public version = "0.1";
+    string              public name;
+    address             public oracleAddress;       // When the prediction is resolved the oracle will tell the prediction who is the winning outcome
+    uint                public tokensPlacementEndTimeSeconds;   // After this time passes, users can no longer place tokens
+    uint                public predictionEndTimeSeconds;   // After this time passes, users can withdraw their winning tokens placements
+    IPrizeCalculation   public prizeCalculation;  //
     
     /*
      *  Events
@@ -22,13 +42,15 @@ contract PredictionMetaData is PredictionStatus {
     /*
      *  Constructor 
     */
-    constructor(string _name, address _oracleAddress) 
+    constructor(string _name, address _oracleAddress, IPrizeCalculation _prizeCalculation) 
         validAddress(_oracleAddress)
+        validAddress(_prizeCalculation)
         notEmptyString(_name)
         public 
         {
             name = _name;
             oracleAddress = _oracleAddress;
+            prizeCalculation = _prizeCalculation;
     }
 
 

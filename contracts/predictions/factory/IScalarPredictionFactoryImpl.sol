@@ -1,6 +1,6 @@
 pragma solidity ^0.4.23;
 import "../../token/IERC20Token.sol";
-import "../types/scalar/ScalarPredictionCalculationMethods.sol";
+import "../prizeCalculations/IPrizeCalculation.sol";
 
 /*
     @title IScalarPredictionFactoryImpl contract - An interface contract for the scalar prediction factory.
@@ -13,7 +13,7 @@ contract IScalarPredictionFactoryImpl {
         uint _optionBuyingEndTimeSeconds, 
         string _name, 
         IERC20Token _stox, 
-        ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod) 
+        IPrizeCalculation _prizeCalculation) 
         public;
     
     event ScalarPredictionCreated(address indexed _creator, address indexed _newPrediction);

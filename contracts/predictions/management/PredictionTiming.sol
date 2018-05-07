@@ -1,15 +1,13 @@
 pragma solidity ^0.4.23;
-import "./PredictionMetaData.sol";
+import "./PredictionStatus.sol";
 
 /*
     @title PredictionTiming contract - holds functions controling chnages in prediction timing.
 */
-contract PredictionTiming is PredictionMetaData {
+contract PredictionTiming is PredictionStatus {
 
-    // Note: operator should close the units sale in his website some time before the actual tokensPlacementEndTimeSeconds as the ethereum network
+    // Note: operator should close the tokens sale in his website some time before the actual tokensPlacementEndTimeSeconds as the ethereum network
     // may take several minutes to process transactions
-    uint        public tokensPlacementEndTimeSeconds;   // After this time passes, users can no longer buy units
-    uint        public predictionEndTimeSeconds;   // After this time passes, users can withdraw their winning units
     
     /*
      *  Events
@@ -22,7 +20,7 @@ contract PredictionTiming is PredictionMetaData {
 
         @param _owner                           Prediction owner / operator
         @param _predictionEndTimeSeconds        Prediction end time
-        @param _tokensPlacementEndTimeSeconds        Unit buying end time
+        @param _tokensPlacementEndTimeSeconds   Tokens placement buying end time
     */
     constructor(uint _predictionEndTimeSeconds, uint _tokensPlacementEndTimeSeconds)
         greaterThanZero(_predictionEndTimeSeconds)
@@ -38,9 +36,9 @@ contract PredictionTiming is PredictionMetaData {
     /*
         @dev Allow the prediction owner to change unit buying end time 
 
-        @param _newUnitBuyingEndTimeSeconds Unit buying end time
+        @param _newTokensPlacementEndTimeSeconds   Tokens placement buying end time
     */
-    function setUnitBuyingEndTime(uint _newTokensPlacementEndTimeSeconds) external  greaterThanZero(_newTokensPlacementEndTimeSeconds) ownerOnly {
+    function setTokensPlacementBuyingEndTime(uint _newTokensPlacementEndTimeSeconds) external  greaterThanZero(_newTokensPlacementEndTimeSeconds) ownerOnly {
          require ((predictionEndTimeSeconds >= _newTokensPlacementEndTimeSeconds) && 
                     ((status == Status.Initializing) || (status == Status.Paused))); 
 

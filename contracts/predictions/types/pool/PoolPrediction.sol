@@ -3,6 +3,8 @@ import "../../../oracles/types/MultipleOutcomeOracle.sol";
 import "../../../token/IERC20Token.sol";
 import "./PoolPredictionPrizeDistribution.sol";
 import "../../management/PredictionMetaData.sol";
+import "../../prizeCalculations/IPrizeCalculation.sol";
+import "../../methods/IPredictionMethods.sol";
 
 
 /**
@@ -32,7 +34,7 @@ import "../../management/PredictionMetaData.sol";
     User C -> 0 tokens
     User D -> 0 tokens
  */
-contract PoolPrediction is PoolPredictionPrizeDistribution {
+contract PoolPrediction is PoolPredictionPrizeDistribution, IPredictionMethods {
    
     /*
      *  Events
@@ -72,7 +74,6 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
      */
     IERC20Token                                                 public stox;                // Stox ERC20 token
     bytes32                                                     public winningOutcome;
-    PoolPredictionCalculationMethods.PoolCalculationMethod      public withdrawCalculationMethod;
     bytes32[]                                                   public outcomes;            // Allows monitoring general existence of outcomes
     mapping(bytes32 => OutcomeProperties)                       public outcomesProperties;      // Per outcome data
     uint                                                        public tokenPool;           // Total tokens used to buy units in this prediction
@@ -101,17 +102,16 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
             uint _tokensPlacementEndTimeSeconds,
             string _name,
             IERC20Token _stox,
-            PoolPredictionCalculationMethods.PoolCalculationMethod _calculationMethod)
+            IPrizeCalculation _prizeCalculation)
             public 
             validAddress(_owner)
             validAddress(_stox)
             Ownable(_owner)
             PredictionTiming(_predictionEndTimeSeconds, _tokensPlacementEndTimeSeconds)
-            PredictionMetaData(_name, _oracle)
+            PredictionMetaData(_name, _oracle, _prizeCalculation)
             {
 
         stox = _stox;
-        withdrawCalculationMethod = _calculationMethod;
     }
 
     /*
@@ -198,23 +198,12 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     function withdrawPrize() public statusIs(Status.Resolved) {
         require((ownerTotalTokenPlacements[msg.sender].tokens > 0) &&
                 (!ownerTotalTokenPlacements[msg.sender].hasWithdrawn));
-<<<<<<< HEAD
 
         distributePrizeToUser(stox, 
-                              withdrawCalculationMethod, 
                               ownerTotalTokenPlacements[msg.sender].tokens,
                               ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome], 
                               outcomesProperties[winningOutcome].tokens, 
                               tokenPool);
-=======
-        
-        distributePrizeToUser(stox, 
-                                withdrawCalculationMethod, 
-                                ownerTotalTokenPlacements[msg.sender].tokens,
-                                ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome].tokens, 
-                                outcomesTokens[winningOutcome].tokens, 
-                                tokenPool);
->>>>>>> a315e6b55b18dd0d4f4b9ac28aa20954ef1bbbfd
 
         ownerTotalTokenPlacements[msg.sender].hasWithdrawn = true;
     }
@@ -228,8 +217,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
     */ 
     function calculateUserWithdrawAmount(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         
-        return (calculatePrizeAmount(withdrawCalculationMethod, 
-                                     ownerTotalTokenPlacements[_owner].tokens, 
+        return (prizeCalculation.calculatePrizeAmount(ownerTotalTokenPlacements[_owner].tokens, 
                                      ownerAccumulatedTokensPerOutcome[_owner][winningOutcome], 
                                      outcomesProperties[winningOutcome].tokens, 
                                      tokenPool));
@@ -241,13 +229,8 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
         @param _owner       Placements owner
         @param _outcome     Outcome to refund
     */
-<<<<<<< HEAD
     function refundUser(address _owner, bytes32 _outcome) public ownerOnly {
         require (status != Status.Resolved);
-=======
-    function refundUser(address _owner, bytes32 _outcome) public ownerOnly statusIs(Status.Resolved) {
-        require (ownerAccumulatedTokensPerOutcome[_owner][_outcome].tokens > 0);
->>>>>>> a315e6b55b18dd0d4f4b9ac28aa20954ef1bbbfd
         
         performRefund(_owner, _outcome);
     }
@@ -281,7 +264,7 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
                                                                 refundAmount);
             ownerAccumulatedTokensPerOutcome[_owner][_outcome] = 0;
                                                     
-            stox.transfer(_owner, refundAmount); // Refund the user
+            assert(stox.transfer(_owner, refundAmount)); // Refund the user
         }
 
         emit UserRefunded(_owner, _outcome, refundAmount);
@@ -310,6 +293,11 @@ contract PoolPrediction is PoolPredictionPrizeDistribution {
         return (ownerAccumulatedTokensPerOutcome[_owner][_outcome] > 0);
     }
 
+    /*
+        @dev Returns number of outcomes
+
+        @return   number of outcomes
+    */
     function getNumberOfOutcomes() external constant returns (uint) {
         return outcomes.length;
     }

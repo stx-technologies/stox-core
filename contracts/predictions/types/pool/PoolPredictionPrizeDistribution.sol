@@ -1,13 +1,12 @@
 pragma solidity ^0.4.23;
 import "../../management/PredictionTiming.sol";
 import "./IPoolPredictionPrizeDistribution.sol";
-import "./PoolPredictionPrizeCalculation.sol";
 import "../../../token/IERC20Token.sol";
 
 /*
     @title PoolPredictionPrizeDistribution contract - holds the pool prediction prize distribution implementation
 */
-contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPrizeCalculation, IPoolPredictionPrizeDistribution {
+contract PoolPredictionPrizeDistribution is PredictionTiming, IPoolPredictionPrizeDistribution {
     
     /*
      * Events
@@ -18,7 +17,6 @@ contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPriz
         @dev Distribute a prize for a user, by method
 
         @param _token                                       ERC20token token
-        @param _method                                      Method for calculating prizes
         @param _ownerTotalTokensPlacements                  Total amount of tokens the owner put on any outcome
         @param _ownerTotalWinningOutcomeTokensPlacements    Total amount of tokens the owner put on the winning outcome
         @param _usersTotalWinningOutcomeTokensPlacements    Total amount of tokens all users put on the winning outcome
@@ -27,7 +25,6 @@ contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPriz
     */
     function distributePrizeToUser(
         IERC20Token _token, 
-        PoolPredictionCalculationMethods.PoolCalculationMethod _method, 
         uint _ownerTotalTokensPlacements,
         uint _ownerTotalWinningOutcomeTokensPlacements, 
         uint _usersTotalWinningOutcomeTokensPlacements, 
@@ -38,8 +35,7 @@ contract PoolPredictionPrizeDistribution is PredictionTiming, PoolPredictionPriz
 
             uint userPrizeTokens = 0;
 
-            userPrizeTokens = calculatePrizeAmount(_method,
-                                                   _ownerTotalTokensPlacements,     
+            userPrizeTokens = prizeCalculation.calculatePrizeAmount(_ownerTotalTokensPlacements,     
                                                    _ownerTotalWinningOutcomeTokensPlacements,
                                                    _usersTotalWinningOutcomeTokensPlacements,
                                                    _tokenPool);

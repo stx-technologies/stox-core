@@ -1,13 +1,12 @@
 pragma solidity ^0.4.23;
 import "../../management/PredictionTiming.sol";
 import "./IScalarPredictionPrizeDistribution.sol";
-import "./ScalarPredictionPrizeCalculation.sol";
 import "../../../token/IERC20Token.sol";
 
 /*
     @title ScalarPredictionPrizeDistribution contract - holds the pool prediction prize distribution implementation
 */
-contract ScalarPredictionPrizeDistribution is PredictionTiming, ScalarPredictionPrizeCalculation, IScalarPredictionPrizeDistribution {
+contract ScalarPredictionPrizeDistribution is PredictionTiming, IScalarPredictionPrizeDistribution {
 
     
     /*
@@ -28,7 +27,6 @@ contract ScalarPredictionPrizeDistribution is PredictionTiming, ScalarPrediction
     */
     function distributePrizeToUser(
         IERC20Token _token, 
-        ScalarPredictionCalculationMethods.ScalarCalculationMethod _method, 
         uint _ownerTotalTokensPlacements,
         uint _ownerTotalWinningOutcomeTokensPlacements, 
         uint _tokenPool)
@@ -38,9 +36,9 @@ contract ScalarPredictionPrizeDistribution is PredictionTiming, ScalarPrediction
 
             uint userPrizeTokens = 0;
 
-            userPrizeTokens = calculatePrizeAmount(_method,
-                                                   _ownerTotalTokensPlacements,     
+            userPrizeTokens = prizeCalculation.calculatePrizeAmount(_ownerTotalTokensPlacements,     
                                                    _ownerTotalWinningOutcomeTokensPlacements,
+                                                   0,
                                                    _tokenPool);
 
             if (userPrizeTokens > 0) {

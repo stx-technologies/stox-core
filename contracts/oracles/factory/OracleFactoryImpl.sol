@@ -1,6 +1,6 @@
 pragma solidity ^0.4.23;
 import "../types/MultipleOutcomeOracle.sol";
-import "../types/ScalarOracle.sol";
+import "../types/SingleNumericOutcomeOracle.sol";
 import "./IUpgradableOracleFactoryImpl.sol";
 
 /*
@@ -9,7 +9,7 @@ import "./IUpgradableOracleFactoryImpl.sol";
 contract OracleFactoryImpl is IUpgradableOracleFactoryImpl {
 
     event MultipleOutcomeOracleCreated(address indexed _creator, address indexed _newOracle);
-    event ScalarOracleCreated(address indexed _creator, address indexed _newOracle);
+    event SingleNumericOutcomeOracleCreated(address indexed _creator, address indexed _newOracle);
 
     constructor() public {}
 
@@ -29,10 +29,10 @@ contract OracleFactoryImpl is IUpgradableOracleFactoryImpl {
 
         @param _name       Oracle name
     */
-    function createScalarOracle(string _name) public {
-        ScalarOracle newOracle = new ScalarOracle(msg.sender, _name);
+    function createSingleNumericOutcomeOracle(string _name) public {
+        SingleNumericOutcomeOracle newOracle = new SingleNumericOutcomeOracle(msg.sender, _name);
 
-        emit ScalarOracleCreated(msg.sender, address(newOracle));
+        emit SingleNumericOutcomeOracleCreated(msg.sender, address(newOracle));
     }
 }
 

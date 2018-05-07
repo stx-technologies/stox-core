@@ -36,7 +36,7 @@ contract ScalarPredictionFactoryImpl is IScalarPredictionFactoryImpl, Utils {
         uint _buyingEndTimeSeconds, 
         string _name, 
         IERC20Token _stox,
-        ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod) 
+        IPrizeCalculation _prizeCalculation) 
         public 
         validAddress(_stox) 
         {
@@ -47,7 +47,7 @@ contract ScalarPredictionFactoryImpl is IScalarPredictionFactoryImpl, Utils {
                                                 _buyingEndTimeSeconds, 
                                                 _name, 
                                                 _stox, 
-                                                _calculationMethod);
+                                                _prizeCalculation);
 
             emit ScalarPredictionCreated(msg.sender, address(newPrediction));
     }

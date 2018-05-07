@@ -1,12 +1,10 @@
 pragma solidity ^0.4.23;
-import "../../Ownable.sol";
-import "../../Utils.sol";
-import "../../token/IERC20Token.sol";
+import "./PredictionMetaData.sol";
 
 /*
     @title PredictionStatus contract - holds prediction status and transitions.
 */
-contract PredictionStatus is Ownable, Utils {
+contract PredictionStatus is PredictionMetaData {
 
     /*
      *  Events
@@ -25,22 +23,6 @@ contract PredictionStatus is Ownable, Utils {
         require(status == _status);
         _;
     }
-
-    /*
-     *  Enums and Structs
-     */
-    enum Status {
-        Initializing,       // The status when the prediction is first created. 
-        Published,          // The prediction is published and users can now place tokens.
-        Resolved,           // The prediction is resolved and users can withdraw their tokens.
-        Paused,             // The prediction is paused and users can no longer place tokens until the prediction is published again.
-        Canceled            // The prediction is canceled. Users can get their placed tokens refunded to them.
-    }
-
-    /*
-     *  Members
-     */
-    Status      public status;
 
     /*
         @dev constructor
@@ -69,7 +51,8 @@ contract PredictionStatus is Ownable, Utils {
         @dev Allow the prediction owner to resolve the prediction.
     */
     function resolve(address _oracle, bytes32 _winningOutcome) statusIs(Status.Published) public {
-        
+        require (tokensPlacementEndTimeSeconds < now);
+
         status = Status.Resolved;
 
         emit PredictionResolved(_oracle, _winningOutcome);

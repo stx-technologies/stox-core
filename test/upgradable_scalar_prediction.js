@@ -9,10 +9,11 @@ const ScalarPrediction = artifacts.require("./predictions/types/scalar/ScalarPre
 const UpgradablePredictionFactory = artifacts.require("./predictions/factory/UpgradablePredictionFactory.sol");
 const IScalarPredictionFactoryImpl = artifacts.require("./predictions/factory/IScalarPredictionFactoryImpl.sol");
 const ScalarPredictionFactoryImpl = artifacts.require("./predictions/factory/ScalarPredictionFactoryImpl.sol");
-const ScalarOracle = artifacts.require("./oracles/types/ScalarOracle.sol");
+const SingleNumericOutcomeOracle = artifacts.require("./oracles/types/SingleNumericOutcomeOracle.sol");
 const UpgradableOracleFactory = artifacts.require("./oracles/factory/UpgradableOracleFactory.sol");
 const IUpgradableOracleFactoryImpl = artifacts.require("./oracles/factory/IUpgradableOracleFactoryImpl.sol");
 const OracleFactoryImpl = artifacts.require("./oracles/factory/OracleFactoryImpl.sol");
+const PrizeCalculationBreakEven = artifacts.require("./predictions/prizeCalculations/PrizeCalculationBreakEven.sol");
 
 let stoxTestToken;
 let predictionFactory;
@@ -23,6 +24,7 @@ let upgradableOracleFactory;
 let iUpgradableOracleFactoryImpl;
 let oracleFactoryImpl;
 let oracle;
+let prizeCalculationBreakEven;
 
 // Accounts
 let predictionOperator;
@@ -71,19 +73,15 @@ contract('ScalarPrediction', function(accounts) {
     let tommorowInSeconds;
     let nowInSeconds;
 
-    let calculationType = {
-        breakEven:0,
-    };
-
     async function initOracle() {
-        await iUpgradableOracleFactoryImpl.createScalarOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
-            oracle = ScalarOracle.at(getLogArg(result, "_newOracle"));
+        await iUpgradableOracleFactoryImpl.createSingleNumericOutcomeOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
+            oracle = SingleNumericOutcomeOracle.at(getLogArg(result, "_newOracle"));
         });
     }
 
-    async function initPrediction(calcType) {
+    async function initPrediction(prizeCalculation) {
         let scalarPrediction;
-        await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calcType, {from: predictionOperator}).then(function(result) {
+        await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculation, {from: predictionOperator}).then(function(result) {
             scalarPrediction = ScalarPrediction.at(getLogArg(result, "_newPrediction"));
         });
         
@@ -127,7 +125,7 @@ contract('ScalarPrediction', function(accounts) {
             'predictions/types/scalar/ScalarPredictionPrizeCalculation.sol': fs.readFileSync('../stox-core/contracts/predictions/types/scalar/ScalarPredictionPrizeCalculation.sol', 'utf8'),
             'predictions/types/scalar/ScalarPredictionPrizeDistribution.sol': fs.readFileSync('../stox-core/contracts/predictions/types/scalar/ScalarPredictionPrizeDistribution.sol', 'utf8'),
             'predictions/factory/IUpgradablePredictionFactoryImpl.sol': fs.readFileSync('../stox-core/contracts/predictions/factory/IUpgradablePredictionFactoryImpl.sol', 'utf8'),
-            'oracles/types/ScalarOracle.sol': fs.readFileSync('../stox-core/contracts/oracles/types/MultipleOutcomeOracle.sol', 'utf8'),
+            'oracles/types/SingleNumericOutcomeOracle.sol': fs.readFileSync('../stox-core/contracts/oracles/types/MultipleOutcomeOracle.sol', 'utf8'),
             'token/IERC20Token.sol': fs.readFileSync('../stox-core/contracts/token/IERC20Token.sol', 'utf8'),
             'Ownable.sol': fs.readFileSync('../stox-core/contracts/Ownable.sol', 'utf8'),
             'Utils.sol': fs.readFileSync('../stox-core/contracts/Utils.sol', 'utf8'),
@@ -161,6 +159,8 @@ contract('ScalarPrediction', function(accounts) {
         upgradablePredictionFactory = await UpgradablePredictionFactory.new(scalarPredictionFactoryImpl.address, {from: predictionOperator});
         iScalarPredictionFactoryImpl = IScalarPredictionFactoryImpl.at(upgradablePredictionFactory.address, {from: predictionOperator});
         
+        prizeCalculationBreakEven = await PrizeCalculationBreakEven.new();
+        
         var tomorrow = new Date();
         tomorrow.setDate((new Date).getDate() + 1);
         tommorowInSeconds = Math.round(tomorrow.getTime() / 1000);
@@ -171,7 +171,7 @@ contract('ScalarPrediction', function(accounts) {
       });
     
     it("should throw if prediction name is invalid", async function() {
-        await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.breakEven, {from: predictionOperator}).then(function(result) {
+        await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationBreakEven.address, {from: predictionOperator}).then(function(result) {
             scalarPrediction = ScalarPrediction.at(getLogArg(result, "_newPrediction"));
         });
                         
@@ -182,7 +182,7 @@ contract('ScalarPrediction', function(accounts) {
    
     it("should throw if oracle address is invalid", async function() {
         try {
-            await iScalarPredictionFactoryImpl.createScalarPrediction(0, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.breakEven, {from: predictionOperator});
+            await iScalarPredictionFactoryImpl.createScalarPrediction(0, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationBreakEven.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -192,7 +192,7 @@ contract('ScalarPrediction', function(accounts) {
 
     it("should throw if prediction end time is invalid", async function() {
         try {
-            await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, 0, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.breakEven, {from: predictionOperator});
+            await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, 0, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationBreakEven.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -202,7 +202,7 @@ contract('ScalarPrediction', function(accounts) {
      
     it("should throw if units buying end time is invalid", async function() {
         try {
-            await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, 0, "Test Prediction", stoxTestToken.address, calculationType.breakEven, {from: predictionOperator});
+            await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, 0, "Test Prediction", stoxTestToken.address, prizeCalculationBreakEven.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -212,7 +212,7 @@ contract('ScalarPrediction', function(accounts) {
 
     it("should throw if prediction end time < units buying end time", async function() {
         try {
-            await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, (tommorowInSeconds + 1000), "Test Prediction", stoxTestToken.address, calculationType.breakEven, {from: predictionOperator});
+            await iScalarPredictionFactoryImpl.createScalarPrediction(oracle.address, tommorowInSeconds, (tommorowInSeconds + 1000), "Test Prediction", stoxTestToken.address, prizeCalculationBreakEven.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -221,7 +221,7 @@ contract('ScalarPrediction', function(accounts) {
     });
         
     it("should throw if a non owner publish the prediction", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
 
         try {
             await scalarPrediction.publish({from: player1});
@@ -233,7 +233,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that the owner published the prediction", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         await scalarPrediction.publish({from: predictionOperator});
         let predictionStatus = await scalarPrediction.status.call();
@@ -241,7 +241,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("should throw if an already published prediction is published", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         try {
@@ -254,7 +254,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if a canceled prediction is published", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await scalarPrediction.cancel({from: predictionOperator});
 
@@ -268,7 +268,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a paused prediction can be published", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await scalarPrediction.pause({from: predictionOperator});
         let predictionStatus = await scalarPrediction.status.call();
@@ -280,29 +280,29 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that the units buying end time can be changed when prediction is initializing", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
-        await scalarPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
         let tokensPlacementEndTimeSeconds = await scalarPrediction.tokensPlacementEndTimeSeconds.call();
         assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("verify that the units buying end time can be changed when prediction is paused", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await scalarPrediction.pause({from: predictionOperator});
 
-        await scalarPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
         let tokensPlacementEndTimeSeconds = await scalarPrediction.tokensPlacementEndTimeSeconds.call();
         assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("should throw if units buying end time is changed when prediction is published", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         try {
-            await scalarPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
+            await scalarPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -311,10 +311,10 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if a non owner changes units buying end time", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         try {
-            await scalarPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: player1});
+            await scalarPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: player1});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -323,7 +323,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if trying to place tokens on a non integer outcome", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -338,7 +338,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that the prediction end time can be changed when prediction is initializing", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         await scalarPrediction.setPredictionEndTime(tommorowInSeconds + 1000, {from: predictionOperator});
         let predictionEndTimeSeconds = await scalarPrediction.predictionEndTimeSeconds.call();
@@ -346,7 +346,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that the prediction end time can be changed when prediction is paused", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await scalarPrediction.pause({from: predictionOperator});
 
@@ -356,7 +356,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if a non owner changes prediction end time", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         try {
             await scalarPrediction.setPredictionEndTime(tommorowInSeconds + 1000, {from: player1});
@@ -368,7 +368,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that the prediction name can be changed", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         await scalarPrediction.setPredictionName("new name", {from: predictionOperator});
         let predictionName = await scalarPrediction.name.call();
@@ -376,7 +376,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if a non owner changes prediction name", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         try {
             await scalarPrediction.setPredictionName("new name", {from: player1});
@@ -388,11 +388,11 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that the oracle can be changed", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         let newOracle;
 
-        await iUpgradableOracleFactoryImpl.createScalarOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
-            newOracle = ScalarOracle.at(getLogArg(result, "_newOracle"));
+        await iUpgradableOracleFactoryImpl.createSingleNumericOutcomeOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
+            newOracle = SingleNumericOutcomeOracle.at(getLogArg(result, "_newOracle"));
         });    
 
         //await oracleFactory.createOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
@@ -405,7 +405,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that a user can buy a unit", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await initPlayers(scalarPrediction.address);
         
@@ -421,7 +421,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that multiple users can buy units", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await initPlayers(scalarPrediction.address);
 
@@ -437,7 +437,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("should throw if trying to resolve a prediction before oracle has been set", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await initPlayers(scalarPrediction.address);
 
@@ -446,7 +446,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         
         try {
@@ -460,7 +460,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("should throw if trying to resolve an prediction before units buying time has ended", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await initPlayers(scalarPrediction.address);
 
@@ -482,7 +482,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that a prediction can be resolved", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await initPlayers(scalarPrediction.address);
 
@@ -491,7 +491,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -516,7 +516,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that a user can withdraw funds from a unit", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -525,7 +525,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, "300", {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -544,7 +544,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a user can withdraw funds from a unit, break even method", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -553,7 +553,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -572,7 +572,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a user can withdraw funds from multiple units", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -582,7 +582,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(1000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -601,7 +601,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that the prediction can be canceled", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await scalarPrediction.cancel({from: predictionOperator});
         
@@ -610,14 +610,14 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if the operator tries to refund a user on a resolved prediction", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
 
         await scalarPrediction.placeTokens(1000, 100, {from: player1});
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -633,7 +633,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a operator can refund a user after the prediction is canceled", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -654,7 +654,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a user can get a refund after the prediction is canceled", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -675,7 +675,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that an prediction can be paused", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         await scalarPrediction.pause({from: predictionOperator});
         
@@ -685,7 +685,7 @@ contract('ScalarPrediction', function(accounts) {
     
 
     it ("verify withdraw prize event fired", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -694,7 +694,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -709,7 +709,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it ("verify place tokens event fired", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -721,7 +721,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a user can get a refund after the prediction is canceled", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -737,7 +737,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it ("verify withdraw prize amount event argument correct", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -746,7 +746,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -764,7 +764,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it ("verify place tokens amount and outcome event arguments correct", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -780,7 +780,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it ("verify place tokens amount and negative outcome event arguments correct", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -796,7 +796,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify refund event arguments correct", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -815,7 +815,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("verify that a user cannot withdraw funds from an un resolved prediction", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -823,7 +823,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(2000, 200, {from: player2});
         
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -839,7 +839,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if the operator tries to refund a user with 0 tokens on the outcome", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -856,7 +856,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("should throw if the user tries to get a refund with 0 tokens on the outcome", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -873,7 +873,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if the user tries to get a refund twice on the same outcome", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
 
         await initPlayers(scalarPrediction.address);
@@ -891,7 +891,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if a user tried to withdraw funds twice", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -900,7 +900,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(3000, 100, {from: player3});
 
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 100, {from: oracleOperator});
@@ -920,7 +920,7 @@ contract('ScalarPrediction', function(accounts) {
     });
        
     it("should throw if a user tries to place 0 tokens on an outcome", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -935,7 +935,7 @@ contract('ScalarPrediction', function(accounts) {
     });
 
     it("should throw if an Oracle tries to set an outcome on an unregistered prediction", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -950,7 +950,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("should throw if an Oracle tries to set an outcome on a registerd->unregistered prediction", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -967,7 +967,7 @@ contract('ScalarPrediction', function(accounts) {
     });
     
     it("verify that a user can withdraw funds, non-winning outcome", async function() {
-        let scalarPrediction = await initPrediction(calculationType.breakEven);
+        let scalarPrediction = await initPrediction(prizeCalculationBreakEven.address);
         await scalarPrediction.publish({from: predictionOperator});
         
         await initPlayers(scalarPrediction.address);
@@ -975,7 +975,7 @@ contract('ScalarPrediction', function(accounts) {
         await scalarPrediction.placeTokens(2000, 200, {from: player2});
         
         await scalarPrediction.pause({from: predictionOperator});
-        await scalarPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await scalarPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await scalarPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(scalarPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(scalarPrediction.address, 300, {from: oracleOperator});

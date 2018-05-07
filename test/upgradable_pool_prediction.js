@@ -14,6 +14,9 @@ const MultipleOutcomeOracle = artifacts.require("./oracles/types/MultipleOutcome
 const UpgradableOracleFactory = artifacts.require("./oracles/factory/UpgradableOracleFactory.sol");
 const IUpgradableOracleFactoryImpl = artifacts.require("./oracles/factory/IUpgradableOracleFactoryImpl.sol");
 const OracleFactoryImpl = artifacts.require("./oracles/factory/OracleFactoryImpl.sol");
+const PrizeCalculationBreakEven = artifacts.require("./predictions/prizeCalculations/PrizeCalculationBreakEven.sol");
+const PrizeCalculationRelative = artifacts.require("./predictions/prizeCalculations/PrizeCalculationRelative.sol");
+
 
 let stoxTestToken;
 let predictionFactory;
@@ -24,6 +27,9 @@ let upgradableOracleFactory;
 let iUpgradableOracleFactoryImpl;
 let oracleFactoryImpl;
 let oracle;
+let prizeCalculationBreakEven;
+let prizeCalculationRelative;
+       
 
 // Accounts
 let predictionOperator;
@@ -72,28 +78,23 @@ contract('PoolPrediction', function(accounts) {
     let tommorowInSeconds;
     let nowInSeconds;
 
-    let calculationType = {
-        breakEven:0,
-        relative:1,
-    };
-
     async function initOracle() {
         await iUpgradableOracleFactoryImpl.createMultipleOutcomeOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
             oracle = MultipleOutcomeOracle.at(getLogArg(result, "_newOracle"));
         });
     }
 
-    async function initPrediction(calcType) {
+    async function initPrediction(prizeCalculation) {
         let poolPrediction;
-        await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calcType, {from: predictionOperator}).then(function(result) {
+        await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculation, {from: predictionOperator}).then(function(result) {
             poolPrediction = PoolPrediction.at(getLogArg(result, "_newPrediction"));
         });
         
         return poolPrediction;
     }
 
-    async function initPredictionWithOutcomes(calcType) {
-        let poolPrediction = await initPrediction(calcType);
+    async function initPredictionWithOutcomes(prizeCalculation) {
+        let poolPrediction = await initPrediction(prizeCalculation);
 
         await poolPrediction.addOutcome(100, {from: predictionOperator});
         await poolPrediction.addOutcome(200, {from: predictionOperator});
@@ -168,10 +169,10 @@ contract('PoolPrediction', function(accounts) {
         let poolGasEstimate = await web3.eth.estimateGas({data: poolContractData});
         console.log("PoolPredictionFactoryImpl gas: " + poolGasEstimate); 
         
-        let createPoolPrediction_gasEstimate = await iPoolPredictionFactoryImpl.createPoolPrediction.estimateGas(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
+        let createPoolPrediction_gasEstimate = await iPoolPredictionFactoryImpl.createPoolPrediction.estimateGas(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationRelative.address, {from: predictionOperator});
         console.log("CreatePoolPrediction gas: " + createPoolPrediction_gasEstimate);
 
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await initPlayers(poolPrediction.address);
         let placeTokens_gasEstimate =  await poolPrediction.placeTokens.estimateGas(1000, 100, {from: player1});
@@ -190,7 +191,10 @@ contract('PoolPrediction', function(accounts) {
         poolPredictionFactoryImpl = await PoolPredictionFactoryImpl.new();
         upgradablePredictionFactory = await UpgradablePredictionFactory.new(poolPredictionFactoryImpl.address, {from: predictionOperator});
         iPoolPredictionFactoryImpl = IPoolPredictionFactoryImpl.at(upgradablePredictionFactory.address, {from: predictionOperator});
-                
+        
+        prizeCalculationBreakEven = await PrizeCalculationBreakEven.new();
+        prizeCalculationRelative = await PrizeCalculationRelative.new();
+
         var tomorrow = new Date();
         tomorrow.setDate((new Date).getDate() + 1);
         tommorowInSeconds = Math.round(tomorrow.getTime() / 1000);
@@ -203,7 +207,7 @@ contract('PoolPrediction', function(accounts) {
       });
     
     it("verify correct number of outcomes returned from get function", async function() {
-        let poolPrediction = await initPrediction(calculationType.breakEven);
+        let poolPrediction = await initPrediction(prizeCalculationBreakEven.address);
         
         await poolPrediction.addOutcome(100, {from: predictionOperator});
         await poolPrediction.addOutcome(200, {from: predictionOperator});
@@ -215,7 +219,7 @@ contract('PoolPrediction', function(accounts) {
     });  
     
     it("should throw if prediction name is invalid", async function() {
-        await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator}).then(function(result) {
+        await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationRelative.address, {from: predictionOperator}).then(function(result) {
             poolPrediction = PoolPrediction.at(getLogArg(result, "_newPrediction"));
         });
                         
@@ -226,7 +230,7 @@ contract('PoolPrediction', function(accounts) {
     
     it("should throw if oracle address is invalid", async function() {
         try {
-            await iPoolPredictionFactoryImpl.createPoolPrediction(0, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
+            await iPoolPredictionFactoryImpl.createPoolPrediction(0, tommorowInSeconds, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationRelative.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -236,7 +240,7 @@ contract('PoolPrediction', function(accounts) {
 
     it("should throw if prediction end time is invalid", async function() {
         try {
-            await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, 0, tommorowInSeconds, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
+            await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, 0, tommorowInSeconds, "Test Prediction", stoxTestToken.address, prizeCalculationRelative.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -246,7 +250,7 @@ contract('PoolPrediction', function(accounts) {
      
     it("should throw if units buying end time is invalid", async function() {
         try {
-            await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, 0, "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
+            await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, 0, "Test Prediction", stoxTestToken.address, prizeCalculationRelative.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -256,7 +260,7 @@ contract('PoolPrediction', function(accounts) {
 
     it("should throw if prediction end time < units buying end time", async function() {
         try {
-            await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, (tommorowInSeconds + 1000), "Test Prediction", stoxTestToken.address, calculationType.relative, {from: predictionOperator});
+            await iPoolPredictionFactoryImpl.createPoolPrediction(oracle.address, tommorowInSeconds, (tommorowInSeconds + 1000), "Test Prediction", stoxTestToken.address, prizeCalculationRelative.address, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -265,7 +269,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if outcome name is invalid", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
         
         try {
             await poolPrediction.addOutcome("", {from: predictionOperator});
@@ -277,7 +281,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if a non owner added outcome", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         try {
             await poolPrediction.addOutcome("outcome1", {from: player1});
@@ -289,7 +293,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if prediction is published without outcomes", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         try {
             await poolPrediction.publish({from: predictionOperator});
@@ -301,7 +305,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if prediction is published with 1 outcome", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         await poolPrediction.addOutcome("outcome1", {from: predictionOperator});
         try {
@@ -314,7 +318,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if a non owner publish the prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
 
         try {
             await poolPrediction.publish({from: player1});
@@ -326,7 +330,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the owner published the prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
 
         await poolPrediction.publish({from: predictionOperator});
         let predictionStatus = await poolPrediction.status.call();
@@ -334,7 +338,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if an already published prediction is published", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         try {
@@ -347,7 +351,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if a canceled prediction is published", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await poolPrediction.cancel({from: predictionOperator});
 
@@ -361,7 +365,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that a paused prediction can be published", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await poolPrediction.pause({from: predictionOperator});
         let predictionStatus = await poolPrediction.status.call();
@@ -373,29 +377,29 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the units buying end time can be changed when prediction is initializing", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
-        await poolPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
         let tokensPlacementEndTimeSeconds = await poolPrediction.tokensPlacementEndTimeSeconds.call();
         assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("verify that the units buying end time can be changed when prediction is paused", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await poolPrediction.pause({from: predictionOperator});
 
-        await poolPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
         let tokensPlacementEndTimeSeconds = await poolPrediction.tokensPlacementEndTimeSeconds.call();
         assert.equal(tokensPlacementEndTimeSeconds, tommorowInSeconds - 1000);
     });
 
     it("should throw if units buying end time is changed when prediction is published", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         try {
-            await poolPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
+            await poolPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: predictionOperator});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -404,10 +408,10 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if a non owner changes units buying end time", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         try {
-            await poolPrediction.setUnitBuyingEndTime(tommorowInSeconds - 1000, {from: player1});
+            await poolPrediction.setTokensPlacementBuyingEndTime(tommorowInSeconds - 1000, {from: player1});
         } catch (error) {
             return utils.ensureException(error);
         }
@@ -416,7 +420,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the prediction end time can be changed when prediction is initializing", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         await poolPrediction.setPredictionEndTime(tommorowInSeconds + 1000, {from: predictionOperator});
         let predictionEndTimeSeconds = await poolPrediction.predictionEndTimeSeconds.call();
@@ -424,7 +428,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the prediction end time can be changed when prediction is paused", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await poolPrediction.pause({from: predictionOperator});
 
@@ -434,7 +438,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if a non owner changes prediction end time", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         try {
             await poolPrediction.setPredictionEndTime(tommorowInSeconds + 1000, {from: player1});
@@ -446,7 +450,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the prediction name can be changed", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         await poolPrediction.setPredictionName("new name", {from: predictionOperator});
         let predictionName = await poolPrediction.name.call();
@@ -454,7 +458,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if a non owner changes prediction name", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
 
         try {
             await poolPrediction.setPredictionName("new name", {from: player1});
@@ -466,7 +470,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the oracle can be changed", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
         let newOracle;
 
         await iUpgradableOracleFactoryImpl.createMultipleOutcomeOracle("Test Oracle", {from: oracleOperator}).then(function(result) {
@@ -483,7 +487,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a user can buy a unit", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await initPlayers(poolPrediction.address);
         
@@ -499,7 +503,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that multiple users can buy units", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await initPlayers(poolPrediction.address);
 
@@ -515,7 +519,7 @@ contract('PoolPrediction', function(accounts) {
     });
    
     it("should throw if trying to resolve an prediction before oracle has been set", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await initPlayers(poolPrediction.address);
         await poolPrediction.placeTokens(1000, 100, {from: player1});
@@ -523,7 +527,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         
         try {
@@ -537,7 +541,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if trying to resolve an prediction before units buying time has ended", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await initPlayers(poolPrediction.address);
         await poolPrediction.placeTokens(1000, 100, {from: player1});
@@ -558,7 +562,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a prediction can be resolved", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -567,7 +571,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -592,7 +596,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a user can withdraw funds from a unit", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -601,7 +605,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -620,7 +624,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that a user can withdraw funds from a winning outcome, break even method", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.breakEven);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationBreakEven.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -629,7 +633,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -648,7 +652,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that a user can withdraw funds from multiple units", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -658,7 +662,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(1000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -677,7 +681,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that the prediction can be canceled", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await poolPrediction.cancel({from: predictionOperator});
         
@@ -686,7 +690,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that a operator can refund a user after the prediction is canceled", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -707,7 +711,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that a user can get a refund after the prediction is canceled", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -728,7 +732,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that an prediction can be paused", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         await poolPrediction.pause({from: predictionOperator});
         
@@ -738,7 +742,7 @@ contract('PoolPrediction', function(accounts) {
     
 
     it ("verify withdraw prize event fired", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -747,7 +751,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -762,7 +766,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it ("verify place tokens event fired", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -774,7 +778,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that a user can get a refund after the prediction is canceled", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -790,7 +794,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify that the owner can add an outcome", async function() {
-        let poolPrediction = await initPrediction(calculationType.relative);
+        let poolPrediction = await initPrediction(prizeCalculationRelative.address);
         tx_result = await poolPrediction.addOutcome("outcome1", {from: predictionOperator});
         
         let event  = getLog(tx_result,"event")
@@ -798,7 +802,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it ("verify withdraw prize amount event argument correct", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -807,7 +811,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -825,7 +829,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it ("verify place tokens amount and outcome event arguments correct", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -839,7 +843,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify refund event arguments correct", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -858,7 +862,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify refund event number string argument correct", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -878,7 +882,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("verify refund event pure string argument correct", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -896,7 +900,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if trying to add an empty outcome", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -911,7 +915,7 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if trying to place tokens on an outcome that doesnt exist", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -926,7 +930,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify vote on an outcome with special chars", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         
         await initPlayers(poolPrediction.address);
         await poolPrediction.addOutcome("string!@~#$%^&*()_+",{from: predictionOperator});
@@ -943,14 +947,14 @@ contract('PoolPrediction', function(accounts) {
     
 
     it ("should throw if non existing outcome is resolved, after being set by the Oracle", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
         await poolPrediction.placeTokens(1000, 100, {from: player1});
         
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 1000, {from: oracleOperator});
@@ -967,7 +971,7 @@ contract('PoolPrediction', function(accounts) {
     
 
     it("verify that a user cannot withdraw funds from an un resolved prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -975,7 +979,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(2000, 200, {from: player2});
         
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -992,7 +996,7 @@ contract('PoolPrediction', function(accounts) {
 
     
     it("verify that a relative prediction with 0 tokens on the winning outcome cannot be withdrawn", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1000,7 +1004,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(2000, 100, {from: player2});
         
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 200, {from: oracleOperator});
@@ -1017,7 +1021,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if the operator tries to refund a user with 0 tokens on the outcome", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -1034,13 +1038,13 @@ contract('PoolPrediction', function(accounts) {
     });
 
     it("should throw if the operator tries to refund a user on a resolved prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
         await poolPrediction.placeTokens(1000, 100, {from: player1});
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -1057,7 +1061,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if the user tries to get a refund with 0 tokens on the outcome", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -1074,7 +1078,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if the user tries to get a refund twice on the same outcome", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -1092,7 +1096,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if a user tried to withdraw funds twice", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1101,7 +1105,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, 100, {from: oracleOperator});
@@ -1121,7 +1125,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if a user tries to place 0 tokens on an outcome", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1137,7 +1141,7 @@ contract('PoolPrediction', function(accounts) {
     
 
     it("should throw if an Oracle tries to set an outcome on an unregistered prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1152,7 +1156,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("should throw if an Oracle tries to set an outcome on a registerd->unregistered prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1169,7 +1173,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a user cannot withdraw funds not having a winning outcome", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1177,7 +1181,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(2000, 200, {from: player2});
         
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, "300", {from: oracleOperator});
@@ -1193,7 +1197,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a user can withdraw funds, non-winning outcome, break even method", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.breakEven);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationBreakEven.address);
         await poolPrediction.publish({from: predictionOperator});
         
         await initPlayers(poolPrediction.address);
@@ -1202,7 +1206,7 @@ contract('PoolPrediction', function(accounts) {
         await poolPrediction.placeTokens(3000, 100, {from: player3});
 
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});
         await oracle.setOutcome(poolPrediction.address, "300", {from: oracleOperator});
@@ -1221,7 +1225,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a operator can refund a user for non-resolved prediction", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.relative);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationRelative.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -1239,7 +1243,7 @@ contract('PoolPrediction', function(accounts) {
     });
     
     it("verify that a user can be refunded, place more tokens and get the prize", async function() {
-        let poolPrediction = await initPredictionWithOutcomes(calculationType.breakEven);
+        let poolPrediction = await initPredictionWithOutcomes(prizeCalculationBreakEven.address);
         await poolPrediction.publish({from: predictionOperator});
 
         await initPlayers(poolPrediction.address);
@@ -1253,7 +1257,7 @@ contract('PoolPrediction', function(accounts) {
         
         await poolPrediction.placeTokens(1000, 200, {from: player1});
         await poolPrediction.pause({from: predictionOperator});
-        await poolPrediction.setUnitBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
+        await poolPrediction.setTokensPlacementBuyingEndTime(nowInSeconds - 1000, {from: predictionOperator});
         await poolPrediction.publish({from: predictionOperator});
         
         await oracle.registerPrediction(poolPrediction.address, {from: oracleOperator});

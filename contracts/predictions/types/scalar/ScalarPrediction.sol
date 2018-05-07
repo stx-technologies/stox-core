@@ -1,15 +1,17 @@
 pragma solidity ^0.4.23;
-import "../../../oracles/types/ScalarOracle.sol";
+import "../../../oracles/types/SingleNumericOutcomeOracle.sol";
 import "../../../token/IERC20Token.sol";
 import "./ScalarPredictionPrizeDistribution.sol";
 import "../../management/PredictionMetaData.sol";
+import "../../prizeCalculations/IPrizeCalculation.sol";
+import "../../methods/IPredictionMethods.sol";
 
 /**
     @title Scalar prediction contract - Scalar predictions distributes tokens between all winners according to
     the distribution (calculation) method. The prediction winning outcome is decided by the oracle and can be any single integer.
 */
 
-contract ScalarPrediction is ScalarPredictionPrizeDistribution {
+contract ScalarPrediction is ScalarPredictionPrizeDistribution, IPredictionMethods {
 
     
     /*
@@ -33,7 +35,6 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
      */
     IERC20Token                                                   public stox;                // Stox ERC20 token
     int                                                           public winningOutcome;
-    ScalarPredictionCalculationMethods.ScalarCalculationMethod    public withdrawCalculationMethod;
     uint                                                          public tokenPool;           // Total tokens used to buy units in this prediction
 
     // Mapping to see all the total tokens bought per outcome, per user (user address -> outcome -> tokens)
@@ -60,17 +61,16 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         uint _tokensPlacementEndTimeSeconds,
         string _name,
         IERC20Token _stox,
-        ScalarPredictionCalculationMethods.ScalarCalculationMethod _calculationMethod)
+        IPrizeCalculation _prizeCalculation)
         public 
         validAddress(_owner)
         validAddress(_stox)
         Ownable(_owner)
         PredictionTiming(_predictionEndTimeSeconds, _tokensPlacementEndTimeSeconds)
-        PredictionMetaData(_name, _oracle)
+        PredictionMetaData(_name, _oracle, _prizeCalculation)
         {
 
         stox = _stox;
-        withdrawCalculationMethod = _calculationMethod;
     }
 
     /*
@@ -121,10 +121,10 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
         in the Oracle contract.
     */
     function resolve() public ownerOnly {
-        require (((ScalarOracle(oracleAddress)).isOutcomeSet(this)) &&
+        require (((SingleNumericOutcomeOracle(oracleAddress)).isOutcomeSet(this)) &&
             (tokensPlacementEndTimeSeconds < now));
 
-        winningOutcome = (ScalarOracle(oracleAddress)).getOutcome(this);
+        winningOutcome = (SingleNumericOutcomeOracle(oracleAddress)).getOutcome(this);
 
         PredictionStatus.resolve(oracleAddress, bytes32(winningOutcome));
     }
@@ -139,7 +139,6 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
 
         distributePrizeToUser(
             stox, 
-            withdrawCalculationMethod, 
             ownerTotalTokenPlacements[msg.sender].tokens,
             ownerAccumulatedTokensPerOutcome[msg.sender][winningOutcome], 
             tokenPool);
@@ -158,11 +157,10 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution {
     */ 
     function calculateUserWithdrawAmount(address _owner) external statusIs(Status.Resolved) constant returns (uint) {
         
-        return (calculatePrizeAmount(
-            withdrawCalculationMethod, 
-            ownerTotalTokenPlacements[_owner].tokens, 
-            ownerAccumulatedTokensPerOutcome[_owner][winningOutcome], 
-            tokenPool));
+        return (prizeCalculation.calculatePrizeAmount(ownerTotalTokenPlacements[_owner].tokens, 
+                                            ownerAccumulatedTokensPerOutcome[_owner][winningOutcome],
+                                            0, 
+                                            tokenPool));
     
     }
 
