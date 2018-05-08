@@ -1,5 +1,8 @@
 pragma solidity ^0.4.23;
 
+/*
+    @title IPrizeCalculation contract - An interface contract for predictions prize calculation methods.
+*/
 contract IPrizeCalculation {
     function calculatePrizeAmount(
         uint _ownerTotalTokensPlacements,

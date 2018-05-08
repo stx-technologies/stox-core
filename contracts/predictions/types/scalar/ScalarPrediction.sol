@@ -204,7 +204,7 @@ contract ScalarPrediction is ScalarPredictionPrizeDistribution, IPredictionMetho
             tokenPool = safeSub(tokenPool, refundAmount);
             ownerTotalTokenPlacements[_owner].tokens = safeSub(ownerTotalTokenPlacements[_owner].tokens, refundAmount);
             ownerAccumulatedTokensPerOutcome[_owner][_outcome] = 0;
-            stox.transfer(_owner, refundAmount); // Refund the user
+            assert(stox.transfer(_owner, refundAmount)); // Refund the user
         }
 
         emit UserRefunded(_owner, _outcome, refundAmount);

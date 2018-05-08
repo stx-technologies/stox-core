@@ -56,6 +56,11 @@ contract MultipleOutcomeOracle is Ownable, Utils {
         emit PredictionUnregistered(_prediction);
     }
 
+    /*
+        @dev Check if a prediction is registered
+        
+        @param _prediction  The prediction address
+    */
     function isPredictionRegistered(address _prediction) private view returns (bool) {
         return (predictionsRegistered[_prediction]);
     }
