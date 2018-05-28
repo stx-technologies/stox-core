@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../token/IERC20Token.sol";
 import "./RelayDispatcher.sol";
 
@@ -53,12 +53,16 @@ library UpgradableSmartWalletLib {
         validAddress(_relayDispatcher)
         {
             _self.relayDispatcher = _relayDispatcher;
-            RelayDispatcher relayDispatcher = RelayDispatcher(_self.relayDispatcher); 
-            address relay = relayDispatcher.getSmartWalletImplAddress();
+            _self.backupAccount = _backupAccount;
+            _self.operatorAccount = _operator;
+            _self.feesAccount = _feesAccount;
+
+            //RelayDispatcher relayDispatcher = RelayDispatcher(_self.relayDispatcher); 
+            //address relay = relayDispatcher.getSmartWalletImplAddress();
             
-            if (!relay.delegatecall(bytes4(keccak256("initWallet(address,address,address)")), _backupAccount, _operator, _feesAccount)) {
-                revert();
-            }
+            //if (!relay.delegatecall(bytes4(keccak256("initWallet(address,address,address)")), _backupAccount, _operator, _feesAccount)) {
+            //    revert();
+            //}
     }
 
     /*
@@ -73,7 +77,7 @@ library UpgradableSmartWalletLib {
         operatorOnly(_self.operatorAccount)
         {
             _token.transfer(_self.backupAccount, _amount);
-            TransferToBackupAccount(_token, _self.backupAccount, _amount); 
+            emit TransferToBackupAccount(_token, _self.backupAccount, _amount); 
     }
 
     /*
@@ -88,7 +92,6 @@ library UpgradableSmartWalletLib {
         validAddress(_relayDispatcher)
         {
             _self.relayDispatcher = _relayDispatcher;
-            SetRelayDispatcher(_relayDispatcher);
+            emit SetRelayDispatcher(_relayDispatcher);
     }
 }
-

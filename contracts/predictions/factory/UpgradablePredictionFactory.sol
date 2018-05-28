@@ -1,6 +1,5 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../Ownable.sol";
-import "./IUpgradablePredictionFactory.sol";
 
 /*
     @title UpgradablePredictionFactory contract - A factory contract for generating predictions.
@@ -13,7 +12,7 @@ contract UpgradablePredictionFactory is Ownable {
      */
     address predictionFactoryImplRelay;
     
-    function UpgradablePredictionFactory(address _predictionFactoryImplRelay) 
+    constructor(address _predictionFactoryImplRelay) 
         public 
         Ownable(msg.sender) 
         {

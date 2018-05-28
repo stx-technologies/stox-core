@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./UpgradableSmartWalletLib.sol";
 import "./RelayDispatcher.sol";
 import "../../token/IERC20Token.sol";
@@ -24,7 +24,7 @@ contract UpgradableSmartWallet {
         @param _relayDispatcher             The address of the contract that holds the relay dispatcher
           
     */  
-    function UpgradableSmartWallet(address _backupAccount, address _operator, address _feesAccount, address _relayDispatcher) 
+    constructor(address _backupAccount, address _operator, address _feesAccount, address _relayDispatcher) 
         public 
         {
             wallet.initUpgradableSmartWallet(_backupAccount, _operator, _feesAccount, _relayDispatcher);
@@ -58,8 +58,13 @@ contract UpgradableSmartWallet {
         RelayDispatcher relayDispatcher = RelayDispatcher(wallet.relayDispatcher); 
         address relay = relayDispatcher.getSmartWalletImplAddress();
         
-        if (!relay.delegatecall(msg.data)) {
-           revert();
+        assembly {
+            calldatacopy(0x0, 0x0, calldatasize)
+            //Using 32 as the default maximum return data size, 
+            //assuming a non varying size of return value for all delegated functions 
+            let result := delegatecall(gas, relay, 0x0, calldatasize, 0x0, 32)
+            returndatacopy(0x0, 0x0, returndatasize)
+            switch result case 0 {revert(0, 0)} default {return (0, returndatasize)}
         }
     }
 }

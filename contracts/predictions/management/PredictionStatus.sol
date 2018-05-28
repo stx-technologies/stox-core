@@ -1,12 +1,10 @@
-pragma solidity ^0.4.18;
-import "../../Ownable.sol";
-import "../../Utils.sol";
-import "../../token/IERC20Token.sol";
+pragma solidity ^0.4.23;
+import "./PredictionMetaData.sol";
 
 /*
     @title PredictionStatus contract - holds prediction status and transitions.
 */
-contract PredictionStatus is Ownable, Utils {
+contract PredictionStatus is PredictionMetaData {
 
     /*
      *  Events
@@ -27,32 +25,15 @@ contract PredictionStatus is Ownable, Utils {
     }
 
     /*
-     *  Enums and Structs
-     */
-    enum Status {
-        Initializing,       // The status when the prediction is first created. 
-        Published,          // The prediction is published and users can now buy units.
-        Resolved,           // The prediction is resolved and users can withdraw their units.
-        Paused,             // The prediction is paused and users can no longer buy units until the prediction is published again.
-        Canceled            // The prediction is canceled. Users can get their invested tokens refunded to them.
-    }
-
-    /*
-     *  Members
-     */
-    Status      public status;
-
-    /*
         @dev constructor
 
         @param _owner       Prediction owner / operator
     */
-    function PredictionStatus ()
+    constructor()
         public
-        //Ownable(_owner)
         {
             status = Status.Initializing;
-        }
+    }
 
     /*
         @dev Allow the prediction owner to publish the prediction
@@ -63,17 +44,18 @@ contract PredictionStatus is Ownable, Utils {
 
         status = Status.Published;
 
-        PredictionPublished();
+        emit PredictionPublished();
     }
 
     /*
         @dev Allow the prediction owner to resolve the prediction.
     */
     function resolve(address _oracle, bytes32 _winningOutcome) statusIs(Status.Published) public {
-        
+        require (tokensPlacementEndTimeSeconds < now);
+
         status = Status.Resolved;
 
-        PredictionResolved(_oracle, _winningOutcome);
+        emit PredictionResolved(_oracle, _winningOutcome);
     }
 
     /*
@@ -85,7 +67,7 @@ contract PredictionStatus is Ownable, Utils {
         
         status = Status.Canceled;
 
-        PredictionCanceled();
+        emit PredictionCanceled();
     }
 
     /*
@@ -94,7 +76,7 @@ contract PredictionStatus is Ownable, Utils {
     function pause() statusIs(Status.Published) public {
         status = Status.Paused;
 
-        PredictionPaused();
+        emit PredictionPaused();
     }
 
 }

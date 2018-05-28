@@ -1,8 +1,9 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "../../token/IERC20Token.sol";
 import "../upgradable/UpgradableSmartWalletLib.sol";
 import "./IWalletImpl.sol";
 import "../../predictions/types/pool/PoolPrediction.sol";
+import "../../predictions/methods/IPredictionMethods.sol";
 
 /*
     @title WalletImpl contract - A wallet implementation. This specific one implements voting on a 
@@ -40,35 +41,18 @@ contract WalletImpl is IWalletImpl {
     /*
      *  Events
      */
-    event TransferToUserWithdrawalAccount(address _token, 
-                                            address _userWithdrawalAccount, 
-                                            uint _amount, 
-                                            address _feesToken, 
-                                            address _feesAccount, 
-                                            uint _fee);
+    event TransferToUserWithdrawalAccount(
+        address _token, 
+        address _userWithdrawalAccount, 
+        uint _amount, 
+        address _feesToken, 
+        address _feesAccount, 
+        uint _fee);
     event SetUserWithdrawalAccount(address _userWithdrawalAccount);
     event VoteOnPoolPrediction(address _voter, address _prediction, bytes32 _outcome, uint _amount);
-    event WithdrawFromPoolPrediction(address _wallet, address _prediction);
-
-    /*
-        @dev Initialize the wallet with the operator and backupAccount address
+    event WithdrawFromPrediction(address _wallet, address _prediction);
+    event GetPoolPredictionRefund(address _prediction, bytes32 _outcome);
         
-        @param _backupAccount               Operator account to release funds in case the user lost his withdrawal account
-        @param _operator                    The operator account
-        @param _feesAccount                 The account to transfer fees to
-    */
-    function initWallet(address _backupAccount, address _operator, address _feesAccount) 
-        public
-        validAddress(_backupAccount)
-        validAddress(_operator)
-        validAddress(_feesAccount)
-        {
-        
-            wallet.backupAccount = _backupAccount;
-            wallet.operatorAccount = _operator;
-            wallet.feesAccount = _feesAccount;
-    }
-
     /*
         @dev Setting the account of the user to send funds to. 
         
@@ -81,7 +65,7 @@ contract WalletImpl is IWalletImpl {
         addressNotSet(wallet.userWithdrawalAccount) 
         {
             wallet.userWithdrawalAccount = _userWithdrawalAccount;
-            SetUserWithdrawalAccount(_userWithdrawalAccount);
+            emit SetUserWithdrawalAccount(_userWithdrawalAccount);
     }
 
     /*
@@ -103,7 +87,7 @@ contract WalletImpl is IWalletImpl {
             }       
                 
             _token.transfer(wallet.userWithdrawalAccount, _amount);
-            TransferToUserWithdrawalAccount(_token, 
+            emit TransferToUserWithdrawalAccount(_token, 
                                                 wallet.userWithdrawalAccount, 
                                                 _amount,  
                                                 _feesToken, 
@@ -111,6 +95,20 @@ contract WalletImpl is IWalletImpl {
                                                 _fee);   
     }
 
+    /*
+        @dev Get a refund from a pool prediction, after it is canceled
+
+        @param _prediction       The pool prediction
+        @param _outcome          The outcome  
+    */
+    function getPoolPredictionRefund(PoolPrediction _prediction, bytes32 _outcome)
+        public
+        validAddress(_prediction)
+        {
+            _prediction.getRefund(_outcome);
+            emit GetPoolPredictionRefund(_prediction, _outcome);
+        }
+    
     /*
         @dev Vote on a prediction of type Pool
 
@@ -125,20 +123,19 @@ contract WalletImpl is IWalletImpl {
             _token.approve(_prediction, 0);
             _token.approve(_prediction, _amount);
             _prediction.placeTokens(_amount, _outcome);
-            VoteOnPoolPrediction(msg.sender, _prediction, _outcome, _amount);
+            emit VoteOnPoolPrediction(msg.sender, _prediction, _outcome, _amount);
         }
 
     /*
-        @dev Withdraw funds from a pool prediction
+        @dev Generic function for withdraw funds from a prediction
 
-        @param _prediction       Pool prediction to withdraw from  
+        @param _prediction       An interface for the prediction to withdraw from  
     */
-    function withdrawFromPoolPrediction(PoolPrediction _prediction)
+    function withdrawFromPrediction(IPredictionMethods _prediction)
         public
         validAddress(_prediction)
         {
             _prediction.withdrawPrize();
-            WithdrawFromPoolPrediction(msg.sender, _prediction);
+            emit WithdrawFromPrediction(msg.sender, _prediction);
         }
 }
-

@@ -30,7 +30,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
         @param _owner                       Oracle owner / operator
         @param _name                        Oracle name
     */
-    function MultipleOutcomeOracle(address _owner, string _name) public notEmptyString(_name) Ownable(_owner) {
+    constructor(address _owner, string _name) public notEmptyString(_name) Ownable(_owner) {
         name = _name;
     }
 
@@ -42,7 +42,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
     function registerPrediction(address _prediction) public validAddress(_prediction) ownerOnly {
         predictionsRegistered[_prediction] = true;
 
-        PredictionRegistered(_prediction);
+        emit PredictionRegistered(_prediction);
     }
 
     /*
@@ -53,9 +53,14 @@ contract MultipleOutcomeOracle is Ownable, Utils {
     function unRegisterPrediction(address _prediction) public validAddress(_prediction) ownerOnly {
         delete predictionsRegistered[_prediction];
 
-        PredictionUnregistered(_prediction);
+        emit PredictionUnregistered(_prediction);
     }
 
+    /*
+        @dev Check if a prediction is registered
+        
+        @param _prediction  The prediction address
+    */
     function isPredictionRegistered(address _prediction) private view returns (bool) {
         return (predictionsRegistered[_prediction]);
     }
@@ -78,7 +83,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
         
         predictionsOutcome[_prediction] = _outcome;
         
-        OutcomeAssigned(_prediction, _outcome);
+        emit OutcomeAssigned(_prediction, _outcome);
     }
 
     /*
@@ -99,7 +104,7 @@ contract MultipleOutcomeOracle is Ownable, Utils {
     */
     function setName(string _newName) notEmptyString(_newName) external ownerOnly {
         name = _newName;
-        OracleNameChanged(_newName);
+        emit OracleNameChanged(_newName);
     }
 }
 

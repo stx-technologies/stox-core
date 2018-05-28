@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 import "./IUpgradableOracleFactoryImpl.sol";
 import "../../Ownable.sol";
 
@@ -14,7 +14,7 @@ contract UpgradableOracleFactory is Ownable {
      */
     address oracleFactoryImplRelay;
     
-    function UpgradableOracleFactory(address _oracleFactoryImplRelay) 
+    constructor(address _oracleFactoryImplRelay) 
         public 
         Ownable(msg.sender) 
         {
